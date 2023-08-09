@@ -24,6 +24,7 @@ from .. import items
 import os
 import configparser
 import sqlite3
+import urllib.parse
 
 
 @base.chain(base.FetcherTop)
@@ -128,3 +129,18 @@ class FetcherFirefox(base.FetcherFixed):
                 if profiles.getboolean(section, self.FIREFOX_PROFILE_ISRELATIVE):
                     path = os.path.join(self.FIREFOX_ROOT, path)
                 return os.path.join(path, self.FIREFOX_PLACES_FILE)
+
+
+class FetcherUrl(base.Fetcher):
+    def notify_request_cb(self):
+        super().notify_request_cb()
+        self.reply.remove_all()
+        result = urllib.parse.urlsplit(self.request)
+        if result.scheme in ('http', 'https'):
+            uri = self.request
+        elif result.scheme == '' and '.' in result.path and result.path == self.request:
+            uri = urllib.parse.urlunsplit(('https', self.request, '', '', ''))
+        else:
+            return
+        item = items.ItemUri(title=_("Open URL in browser"), subtitle=uri, icon='web-browser', score=1.0)
+        self.reply.append(item)

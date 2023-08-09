@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from gi.repository import GObject
 from gi.repository import Gdk
 from gi.repository import Gtk
 
@@ -37,9 +38,9 @@ class Factory(Gtk.SignalListItemFactory):
     def setup_cb(self, listitem):
         box = Gtk.Box(css_name='item-box')
         box.icon = Gtk.Image(icon_size=Gtk.IconSize.LARGE)
-        box.titlebox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER, css_name='item-titlebox')
-        box.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['title'])
-        box.subtitle = Gtk.Label(halign=Gtk.Align.START, css_classes=['subtitle'])
+        box.titlebox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+        box.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-title'])
+        box.subtitle = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-subtitle'])
 
         box.append(box.icon)
         box.append(box.titlebox)
@@ -72,10 +73,10 @@ class RequestBox(Gtk.Box):
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
-        self.entry = Gtk.Entry()
+        self.entry = Gtk.Entry(css_classes=['request'])
         self.append(self.entry)
 
-        self.entry.get_buffer().bind_property('text', self.fetcher, 'request')
+        self.fetcher.bind_property('request', self.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
 
         self.selection = Gtk.SingleSelection(model=self.fetcher.reply)
         self.view = Gtk.ListView(model=self.selection, factory=Factory())
@@ -87,10 +88,6 @@ class RequestBox(Gtk.Box):
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
-
-    def set_request(self, request):
-        self.entry.get_buffer().set_text(request, -1)
-        self.entry.select_region(0, -1)
 
     @staticmethod
     def activate_entry_cb(entry, view):
@@ -120,12 +117,15 @@ class HeaderBar(Gtk.HeaderBar):
 
 class CssProvider(Gtk.CssProvider):
     CSS = '''
-    item-titlebox > label.title {
+    label.item-title {
       font-size: larger;
     }
-    item-titlebox > label.subtitle {
+    label.item-subtitle {
       font-size: smaller;
       color: rgba(0.5,0.5,0.5,0.5);
+    }
+    entry.request {
+      font-size: 250%;
     }
     '''
 
@@ -138,15 +138,13 @@ class CssProvider(Gtk.CssProvider):
 
 
 class Window(Gtk.ApplicationWindow):
-    def __init__(self, app, fetcher_):
-        self.fetcher = fetcher_
+    def __init__(self, app, fetcher):
+        # self.fetcher = fetcher
+        fetcher.reply.connect('items-changed', self.items_changed_cb)
 
         self.headerbar = HeaderBar()
-        self.request_box = RequestBox(self.fetcher)
-
-        self.request_box.set_request(app.request)
-        app.connect('notify::request', self.notify_request_cb, self.request_box)
-        self.fetcher.reply.connect('items-changed', self.items_changed_cb)
+        self.request_box = RequestBox(fetcher)
+        self.select_entry()
 
         super().__init__(titlebar=self.headerbar, child=self.request_box, application=app)
 
@@ -155,14 +153,12 @@ class Window(Gtk.ApplicationWindow):
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    def destroy(self):
-        self.fetcher.reply.disconnect_by_func(self.items_changed_cb)
-        self.get_application().disconnect_by_func(self.notify_request_cb)
-        super().destroy()
-
-    @staticmethod
-    def notify_request_cb(app, param, request_box):
-        request_box.set_request(app.request)
+    # def destroy(self):
+    #     self.fetcher.reply.disconnect_by_func(self.items_changed_cb)
+    #     super().destroy()
 
     def items_changed_cb(self, model, position, removed, added):
         self.set_default_size(0, 0)
+
+    def select_entry(self):
+        self.request_box.entry.select_region(0, -1)

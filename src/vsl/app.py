@@ -63,15 +63,14 @@ class ActionClose(Action):
 
 
 class App(Gtk.Application):
-    request = GObject.Property(type=str, default='')
-
     def __init__(self):
         super().__init__(application_id=f'begnac.{__application__}', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
 
-        self.add_main_option('version', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display version"), None)
-        self.add_main_option('copyright', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display copyright"), None)
+        self.add_main_option('version', ord('V'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display version"), None)
+        self.add_main_option('copyright', ord('C'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display copyright"), None)
         self.add_main_option('debug', ord('d'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Debug messages"), None)
-        self.add_main_option('request', 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _("Request text"), None)
+        self.add_main_option('request', ord('r'), GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _("Request text"), None)
+        self.add_main_option('clipboard', ord('c'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Request from clipboard"), None)
 
     def __del__(self):
         logger.debug('Deleting {}'.format(self))
@@ -123,15 +122,15 @@ class App(Gtk.Application):
             logger.setLevel(logging.DEBUG)
 
         if 'request' in options:
-            self.request = options['request']
-        else:
+            self.set_request(options['request'])
+        elif 'clipboard' in options:
             Gdk.Display.get_default().get_primary_clipboard().read_text_async(None, self.clipboard_read_cb)
         self.activate()
         return 0
 
     def clipboard_read_cb(self, clipboard, result):
         try:
-            self.request = clipboard.read_text_finish(result)
+            self.set_request(clipboard.read_text_finish(result))
         except GLib.GError:
             pass
 
@@ -139,6 +138,12 @@ class App(Gtk.Application):
         Gtk.Application.do_activate(self)
         win = self.get_active_window() or ui.Window(self, self.root_fetcher)
         win.present()
+
+    def set_request(self, request):
+        self.root_fetcher.request = request
+        win = self.get_active_window()
+        if win:
+            win.select_entry()
 
     def close_window(self):
         win = self.get_active_window()

@@ -29,4 +29,5 @@ class FetcherRoot(base.FetcherMux):
         misc.FetcherGoogle,
         misc.FetcherDebian,
         misc.FetcherFirefox,
+        misc.FetcherUrl,
     ]
