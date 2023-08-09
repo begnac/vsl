@@ -144,14 +144,10 @@ class _FetcherMux(Fetcher):
         self.reply_map.set_map_func(lambda fetcher: fetcher.reply)
         super().__init__(fetchers=fetchers, reply=Gtk.FlattenListModel(model=self.reply_map))
 
-    def notify_request_cb(self):
-        super().notify_request_cb()
-
 
 class FetcherMux(_FetcherMux):
-    def __init__(self, *_fetchers, fetchers=()):
+    def __init__(self):
         super().__init__()
-
         for fetcher_class in self.classes:
             fetcher = fetcher_class()
             self.fetchers.append(fetcher)
@@ -159,6 +155,7 @@ class FetcherMux(_FetcherMux):
     def notify_request_cb(self):
         for fetcher in self.fetchers:
             fetcher.request = self.request
+        self.reply_map.set_map_func(lambda fetcher: fetcher.reply)  # Not clear why, but needed to remap.  Bug in Gtk4 ?
         super().notify_request_cb()
 
 
@@ -182,11 +179,12 @@ class FetcherPrefix(_FetcherMux):
         self.status = self.PREFIX_NONE
 
     def notify_request_cb(self):
+        super().notify_request_cb()
         if not self.request.startswith('.'):
             if self.status != self.PREFIX_NONE:
                 self.status = self.PREFIX_NONE
                 self.fetcher2.reply.remove_all()
-            self.score_fetcher.set_score(0.0)
+                self.score_fetcher.set_score(0.0)
             self.fetcher.request = self.request
         elif self.request[1:] in (self.prefix, '?'):
             if self.status != self.PREFIX_EXACT:
@@ -202,5 +200,5 @@ class FetcherPrefix(_FetcherMux):
             if self.status != self.PREFIX_OK:
                 self.status = self.PREFIX_OK
                 self.fetcher2.reply.remove_all()
-            self.score_fetcher.set_score(1.0)
+                self.score_fetcher.set_score(1.0)
             self.fetcher.request = self.request[len(self.prefix) + 1:]
