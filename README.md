@@ -8,7 +8,7 @@ At this point this is merely a proof-of-concept.
   + `request` of type `str` is what the user is looking for.
   + `reply` of a type implementing `Gio.ListModel` contains a list of `Item`s found.
 - Requests are sent down the pipeline by setting the `request` property.
-- Replies are sent up the pipe using Gtk4's various `ListModel` implementations (`FilterListModel` etc.)
+- Replies are sent up using Gtk4's various `ListModel` implementations (`FilterListModel` etc.)
 
 ## Requirements
 

@@ -18,17 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import logging
+import sys
 
-from . import __application__
+from . import app
 
 
-logger = logging.getLogger(__application__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
-
-setLevel = logger.setLevel
-debug = logger.debug
-info = logger.info
-warning = logger.warning
-error = logger.error
+app.App().run(sys.argv)

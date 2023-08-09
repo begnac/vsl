@@ -28,11 +28,13 @@ from .. import items
 from .. import logger
 
 
-def chain(factory):
-    def decorator(old_factory):
-        def new_factory(*args, **kwargs):
-            return factory(old_factory(*args, **kwargs))
-        return new_factory
+def chain(ChainClass, *cargs, **ckwargs):
+    def decorator(OldClass):
+        class NewClass(ChainClass):
+            def __init__(self, *args, **kwargs):
+                super().__init__(OldClass(*args, **kwargs, **ckwargs), *cargs, **ckwargs)
+        NewClass.__name__ = f'{OldClass.__name__}->{ChainClass.__name__}'
+        return NewClass
     return decorator
 
 
@@ -52,9 +54,6 @@ class Fetcher(GObject.Object):
     def notify_request_cb(self):
         pass
 
-    # def cleanup(self):
-    #     logger.debug(f'Cleaning up {self}')
-
 
 class FetcherModifierMixin:
     def __init__(self, *, fetcher, **kwargs):
@@ -66,10 +65,6 @@ class FetcherModifierMixin:
         super().notify_request_cb()
         self.fetcher.request = self.request
 
-    # def cleanup(self):
-    #     super().cleanup()
-    #     self.fetcher.cleanup()
-
 
 class FetcherTop(FetcherModifierMixin, Fetcher):
     def __init__(self, fetcher, *, size=5, **kwargs):
@@ -78,18 +73,20 @@ class FetcherTop(FetcherModifierMixin, Fetcher):
         super().__init__(fetcher=fetcher, reply=reply, **kwargs)
 
 
-class FetcherFilter(FetcherModifierMixin, Fetcher):
+class _FetcherFilter(FetcherModifierMixin, Fetcher):
+    def __init__(self, *, fetcher, filter=None, **kwargs):
+        super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter), **kwargs)
+
+
+class FetcherFilter(_FetcherFilter):
     def __init__(self, fetcher, *, score=0.2, **kwargs):
-        filter = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
-        reply = Gtk.FilterListModel(model=fetcher.reply, filter=filter)
-        super().__init__(fetcher=fetcher, reply=reply, **kwargs)
+        super().__init__(fetcher=fetcher, filter=Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score), **kwargs)
 
 
-class FetcherNonEmpty(FetcherModifierMixin, Fetcher):
+class FetcherNonEmpty(_FetcherFilter):
     def __init__(self, fetcher, **kwargs):
         self.filter = Gtk.CustomFilter.new(lambda item, fetcher_: fetcher_.request != '', fetcher)
-        reply = Gtk.FilterListModel(model=fetcher.reply, filter=self.filter)
-        super().__init__(fetcher=fetcher, reply=reply, **kwargs)
+        super().__init__(fetcher=fetcher, filter=self.filter, **kwargs)
 
     def notify_request_cb(self):
         super().notify_request_cb()
@@ -101,15 +98,15 @@ class _FetcherScore(FetcherModifierMixin, Fetcher):
         super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply), **kwargs)
 
     @staticmethod
-    def change_score(item, score):
+    def change_score(item, delta):
         new_item = item.copy()
-        new_item.score += score
+        new_item.score += delta
         return new_item
 
 
 class FetcherChangeScore(_FetcherScore):
-    def set_score(self, score):
-        self.reply.set_map_func(self.change_score, score)
+    def set_score(self, delta):
+        self.reply.set_map_func(self.change_score, delta)
 
 
 class FetcherScore(_FetcherScore):
@@ -147,65 +144,63 @@ class _FetcherMux(Fetcher):
         self.reply_map.set_map_func(lambda fetcher: fetcher.reply)
         super().__init__(fetchers=fetchers, reply=Gtk.FlattenListModel(model=self.reply_map))
 
+    def notify_request_cb(self):
+        super().notify_request_cb()
+
 
 class FetcherMux(_FetcherMux):
     def __init__(self, *_fetchers, fetchers=()):
         super().__init__()
 
-        for fetcher in _fetchers:
-            self.append_fetcher(fetcher)
-        for fetcher in fetchers:
-            self.append_fetcher(fetcher)
+        for fetcher_class in self.classes:
+            fetcher = fetcher_class()
+            self.fetchers.append(fetcher)
 
-    def append_fetcher(self, fetcher):
-        if fetcher in self.fetchers:
-            raise ValueError
-        self.fetchers.append(fetcher)
-        fetcher.request_binding = self.bind_property('request', fetcher, 'request', GObject.BindingFlags.SYNC_CREATE)
-
-    def remove_fetcher(self, fetcher):
-        has, pos = self.fetchers.find(fetcher)
-        if not has:
-            raise ValueError
-        self.fetchers.remove(pos)
-        fetcher.request_binding.unbind()
+    def notify_request_cb(self):
+        for fetcher in self.fetchers:
+            fetcher.request = self.request
+        super().notify_request_cb()
 
 
 class FetcherPrefix(_FetcherMux):
-    has_prefix = GObject.Property(type=bool, default=False)
+    PREFIX_NONE = 0
+    PREFIX_BAD = 1
+    PREFIX_EXACT = 2
+    PREFIX_OK = 3
 
-    def __init__(self, prefix, fetcher):
+    def __init__(self, fetcher, prefix, title, icon=None):
         super().__init__()
         self.fetcher = fetcher
-        self.score_fetcher = FetcherChangeScore(fetcher)
+        self.score_fetcher = FetcherChangeScore(self.fetcher)
         self.fetcher2 = Fetcher()
         self.fetchers.append(self.score_fetcher)
         self.fetchers.append(self.fetcher2)
 
         self.prefix = prefix
-        self.caught_reply = items.Item(title="Caught prefix", subtitle=f"Prefix is « {prefix} »", icon=None)
+        self.caught_reply = items.Item(title=title, subtitle=f"Prefix is « {prefix} »", icon=icon, score=1.0)
+
+        self.status = self.PREFIX_NONE
 
     def notify_request_cb(self):
-        super().notify_request_cb()
-        has_prefix = False
-        if self.request.startswith('.'):
-            if self.request[1:].startswith(self.prefix):
-                request = self.request[len(self.prefix) + 1:]
-                has_prefix = True
-            else:
-                request = ''
-        else:
-            request = self.request
-
-        if has_prefix:
-            if not self.has_prefix:
-                self.has_prefix = True
+        if not self.request.startswith('.'):
+            if self.status != self.PREFIX_NONE:
+                self.status = self.PREFIX_NONE
+                self.fetcher2.reply.remove_all()
+            self.score_fetcher.set_score(0.0)
+            self.fetcher.request = self.request
+        elif self.request[1:] in (self.prefix, '?'):
+            if self.status != self.PREFIX_EXACT:
+                self.status = self.PREFIX_EXACT
                 self.fetcher2.reply.append(self.caught_reply)
-                self.score_fetcher.set_score(1.0)
+                self.fetcher.request = ''
+        elif not self.request[1:].startswith(self.prefix):
+            if self.status != self.PREFIX_BAD:
+                self.status = self.PREFIX_BAD
+                self.fetcher2.reply.remove_all()
+                self.fetcher.request = ''
         else:
-            if self.has_prefix:
-                self.has_prefix = False
-                self.fetcher2.reply.remove(0)
-                self.score_fetcher.set_score(0.0)
-
-        self.fetcher.request = request
+            if self.status != self.PREFIX_OK:
+                self.status = self.PREFIX_OK
+                self.fetcher2.reply.remove_all()
+            self.score_fetcher.set_score(1.0)
+            self.fetcher.request = self.request[len(self.prefix) + 1:]

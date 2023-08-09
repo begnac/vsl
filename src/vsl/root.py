@@ -24,9 +24,9 @@ from .fetchers import misc
 
 @base.chain(base.FetcherTop)
 class FetcherRoot(base.FetcherMux):
-    def __init__(self):
-        super().__init__(
-            misc.FetcherActions(),
-            base.FetcherPrefix('gg', misc.FetcherGoogle()),
-            base.FetcherPrefix('ff', misc.FetcherFirefox()),
-        )
+    classes = [
+        misc.FetcherActions,
+        misc.FetcherGoogle,
+        misc.FetcherDebian,
+        misc.FetcherFirefox,
+    ]

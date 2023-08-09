@@ -25,10 +25,11 @@ from gi.repository import Gdk
 from gi.repository import Gtk
 
 import signal
+import logging
 
 # import gasyncio
 
-from . import __application__, __program_name__, __version__
+from . import __application__, __program_name__, __version__, __copyright__, __license_type__
 from . import ui
 from . import root
 from . import logger
@@ -38,16 +39,17 @@ class Action(Gio.SimpleAction):
     def __init__(self, name, accels, activate_cb):
         self.name = name
         self.accels = accels
-        self.activate_cb = activate_cb
+        self.activate_cb = lambda self_, param, app: activate_cb(app)
         super().__init__(name=name)
 
     def add_to_app(self, app):
-        self.connect('activate', lambda self_, param, app_: self_.activate_cb(app_), app)
+        self.connect('activate', self.activate_cb, app)
         app.add_action(self)
         app.set_accels_for_action(f'app.{self.name}', self.accels)
 
     def remove_from_app(self, app):
         app.remove_action(self.name)
+        self.disconnect_by_func(self.activate_cb)
 
 
 class ActionQuit(Action):
@@ -68,6 +70,7 @@ class App(Gtk.Application):
 
         self.add_main_option('version', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display version"), None)
         self.add_main_option('copyright', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display copyright"), None)
+        self.add_main_option('debug', ord('d'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Debug messages"), None)
         self.add_main_option('request', 0, GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _("Request text"), None)
 
     def __del__(self):
@@ -75,8 +78,6 @@ class App(Gtk.Application):
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
-
-        logger.debug("Starting")
 
         ui.CssProvider().add_myself()
 
@@ -88,6 +89,7 @@ class App(Gtk.Application):
         for action in self.actions:
             action.add_to_app(self)
 
+        self.root_fetcher = root.FetcherRoot()
         self.hold()
 
     def do_shutdown(self):
@@ -107,24 +109,19 @@ class App(Gtk.Application):
             print(_("{program} version {version}").format(program=__program_name__, version=__version__))
             return 0
 
-        # if options.contains('copyright'):
-        #     print(__copyright__)
-        #     print(__license__)
-        #     return 0
-
-        # if options.contains('list-actions'):
-        #     self.register()
-        #     for name in sorted(self.list_actions()):
-        #         print(name)
-        #     return 0
-
-        # if options.contains('non-unique'):
-        #     self.set_flags(self.get_flags() | Gio.ApplicationFlags.NON_UNIQUE)
+        if options.contains('copyright'):
+            print(__copyright__)
+            print(__license_type__)
+            return 0
 
         return Gtk.Application.do_handle_local_options(self, options)
 
     def do_command_line(self, command_line):
         options = command_line.get_options_dict().end().unpack()
+
+        if 'debug' in options:
+            logger.setLevel(logging.DEBUG)
+
         if 'request' in options:
             self.request = options['request']
         else:
@@ -140,7 +137,7 @@ class App(Gtk.Application):
 
     def do_activate(self):
         Gtk.Application.do_activate(self)
-        win = self.get_active_window() or ui.Window(self, root.FetcherRoot())
+        win = self.get_active_window() or ui.Window(self, self.root_fetcher)
         win.present()
 
     def close_window(self):

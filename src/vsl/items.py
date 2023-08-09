@@ -38,7 +38,7 @@ class Item(GObject.Object):
         return type(self)(**vars(self))
 
     def __repr__(self):
-        return f'Item({self.title})'
+        return f'Item({self.title} ({self.score}))'
 
 
 class ItemUri(Item):

@@ -38,12 +38,66 @@ class FetcherActions(base.FetcherFixed):
 
 
 @base.chain(base.FetcherNonEmpty)
-class FetcherGoogle(base.Fetcher):
+class FetcherWeb(base.Fetcher):
+    def __init__(self, url, title, icon=None):
+        super().__init__()
+        self.title = title
+        self.url = url
+        self.icon = icon
+
     def notify_request_cb(self):
         super().notify_request_cb()
-        self.reply.splice(0, len(self.reply), [items.ItemUri(title=_("Google search"), subtitle=f'https://www.google.com/search?q={self.request}')])
+        self.reply.splice(0, len(self.reply), [items.ItemUri(title=self.title, subtitle=self.url.replace('%s', self.request), icon=self.icon)])
 
 
+@base.chain(base.FetcherPrefix, 'gg', title=_("Google search"))
+class FetcherGoogle(FetcherWeb):
+    def __init__(self, **kwargs):
+        super().__init__('https://www.google.com/search?q=%s', **kwargs)
+
+
+@base.chain(base.FetcherPrefix, 'p', title=_("Debian package search"), icon='emblem-debian')
+class FetcherDebianPackage(FetcherWeb):
+    def __init__(self, **kwargs):
+        super().__init__('https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any', **kwargs)
+
+
+@base.chain(base.FetcherPrefix, 'f', title=_("Debian file search"), icon='emblem-debian')
+class FetcherDebianFile(FetcherWeb):
+    def __init__(self, **kwargs):
+        super().__init__('https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any', **kwargs)
+
+
+@base.chain(base.FetcherPrefix, 'p', title=_("Debian bugs by package"), icon='emblem-debian')
+class FetcherDebianBugPackage(FetcherWeb):
+    def __init__(self, **kwargs):
+        super().__init__('https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s', **kwargs)
+
+
+@base.chain(base.FetcherPrefix, 'n', title=_("Debian bug by number"), icon='emblem-debian')
+class FetcherDebianBugNumber(FetcherWeb):
+    def __init__(self, **kwargs):
+        super().__init__('https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s', **kwargs)
+
+
+@base.chain(base.FetcherPrefix, 'b', _("Debian bugs"), 'emblem-debian')
+class FetcherDebianBugs(base.FetcherMux):
+    classes = [
+        FetcherDebianBugPackage,
+        FetcherDebianBugNumber,
+    ]
+
+
+@base.chain(base.FetcherPrefix, 'd', _("Debian searches"), 'emblem-debian')
+class FetcherDebian(base.FetcherMux):
+    classes = [
+        FetcherDebianPackage,
+        FetcherDebianFile,
+        FetcherDebianBugs,
+    ]
+
+
+@base.chain(base.FetcherPrefix, 'ff', _("Firefox bookmarks"), 'firefox')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherFilter)
 @base.chain(base.FetcherScore)
