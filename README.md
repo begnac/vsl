@@ -15,3 +15,5 @@ At this point this is merely a proof-of-concept.
 - Python 3
 - PyGObject
 - GLib and Gtk4 Python GObject Introspection
+- Python packages:
+  * gasyncio
