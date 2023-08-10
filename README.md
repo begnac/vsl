@@ -17,3 +17,4 @@ At this point this is merely a proof-of-concept.
 - GLib and Gtk4 Python GObject Introspection
 - Python packages:
   * gasyncio
+  * aiosqlite

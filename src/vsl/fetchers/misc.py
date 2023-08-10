@@ -23,7 +23,8 @@ from .. import items
 
 import os
 import configparser
-import sqlite3
+import asyncio
+import aiosqlite
 import urllib.parse
 
 
@@ -102,7 +103,7 @@ class FetcherDebian(base.FetcherMux):
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherFilter)
 @base.chain(base.FetcherScore)
-class FetcherFirefox(base.FetcherFixed):
+class FetcherFirefox(base.Fetcher):
     FIREFOX_ROOT = os.path.expanduser('~/.mozilla/firefox')
     FIREFOX_PROFILES = os.path.join(FIREFOX_ROOT, 'profiles.ini')
 
@@ -113,12 +114,18 @@ class FetcherFirefox(base.FetcherFixed):
     FIREFOX_PLACES_FILE = 'places.sqlite'
 
     def __init__(self):
-        con = sqlite3.connect(f'file:{self.firefox_places()}?immutable=1', uri=True)
-        bookmarks = list(con.execute('SELECT bookmarks.title, places.url '
+        super().__init__()
+        asyncio.ensure_future(self.setup())
+
+    async def setup(self):
+        db = await aiosqlite.connect(f'file:{self.firefox_places()}?immutable=1', uri=True)
+        bookmarks = await db.execute('SELECT bookmarks.title, places.url '
                                      'FROM moz_bookmarks bookmarks '
-                                     'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
-                                     'JOIN moz_places places ON bookmarks.fk = places.id'))
-        super().__init__(items=(items.ItemUri(icon='firefox', title=title, subtitle=url) for title, url in bookmarks))
+                                     # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
+                                     'JOIN moz_places places ON bookmarks.fk = places.id')
+        async for title, url in bookmarks:
+            self.reply.append(items.ItemUri(icon='firefox', title=title, subtitle=url))
+        await db.close()
 
     def firefox_places(self):
         profiles = configparser.ConfigParser()
