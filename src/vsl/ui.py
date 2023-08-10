@@ -19,6 +19,7 @@
 
 
 from gi.repository import GObject
+from gi.repository import GdkPixbuf
 from gi.repository import Gdk
 from gi.repository import Gtk
 
@@ -53,7 +54,14 @@ class Factory(Gtk.SignalListItemFactory):
     def bind_cb(self, listitem):
         item = listitem.get_item()
         box = listitem.get_child()
-        box.icon.set_from_icon_name(item.icon)
+        if item.icon is None:
+            pass
+        elif isinstance(item.icon, str):
+            box.icon.set_from_icon_name(item.icon)
+        elif isinstance(item.icon, GdkPixbuf.Pixbuf):
+            box.icon.set_from_pixbuf(item.icon)
+        else:
+            raise ValueError
         box.title.set_label(f'{item.title} ({item.score})')
         # box.title.set_label(item.title)
         box.subtitle.set_label(item.subtitle)

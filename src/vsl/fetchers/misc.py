@@ -18,14 +18,40 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from . import base
-from .. import items
+from gi.repository import Gio
+from gi.repository import GdkPixbuf
 
 import os
 import configparser
 import asyncio
 import aiosqlite
 import urllib.parse
+
+from . import base
+from .. import items
+
+
+class FirefoxInfo:
+    FIREFOX_ROOT = os.path.expanduser('~/.mozilla/firefox')
+    profile_path = None
+
+    @classmethod
+    async def db_in_profile(cls, name):
+        path = os.path.join(cls.get_profile_path(), name)
+        return await aiosqlite.connect(f'file:{path}.sqlite?immutable=1', uri=True)
+
+    @classmethod
+    def get_profile_path(cls):
+        if cls.profile_path is None:
+            profiles = configparser.ConfigParser()
+            profiles.read(os.path.join(cls.FIREFOX_ROOT, 'profiles.ini'))
+            for section in profiles.sections():
+                if section.startswith('Profile') and profiles.has_option(section, 'Default') and profiles.getboolean(section, 'Default'):
+                    cls.profile_path = profiles.get(section, 'Path')
+                    if profiles.getboolean(section, 'IsRelative'):
+                        cls.profile_path = os.path.join(cls.FIREFOX_ROOT, cls.profile_path)
+                    break
+        return cls.profile_path
 
 
 @base.chain(base.FetcherTop)
@@ -41,11 +67,26 @@ class FetcherActions(base.FetcherFixed):
 
 @base.chain(base.FetcherNonEmpty)
 class FetcherWeb(base.Fetcher):
-    def __init__(self, url, title, icon=None):
+    def __init__(self, url, title, icon=None, favicon=None):
         super().__init__()
         self.title = title
         self.url = url
         self.icon = icon
+
+        if favicon:
+            asyncio.ensure_future(self.get_icon(favicon))
+
+    async def get_icon(self, favicon):
+        db = await FirefoxInfo.db_in_profile('favicons')
+        icons = await db.execute('SELECT data '
+                                 'FROM moz_icons '
+                                 'WHERE icon_url = ? '
+                                 'ORDER BY moz_icons.width DESC', (favicon,))
+        async for data, in icons:
+            stream = Gio.MemoryInputStream.new_from_data(data)
+            self.icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
+            break
+        await db.close()
 
     def notify_request_cb(self):
         super().notify_request_cb()
@@ -55,7 +96,7 @@ class FetcherWeb(base.Fetcher):
 @base.chain(base.FetcherPrefix, 'gg', title=_("Google search"))
 class FetcherGoogle(FetcherWeb):
     def __init__(self, **kwargs):
-        super().__init__('https://www.google.com/search?q=%s', **kwargs)
+        super().__init__('https://www.google.com/search?q=%s', favicon='https://www.google.com/favicon.ico', **kwargs)
 
 
 @base.chain(base.FetcherPrefix, 'p', title=_("Debian package search"), icon='emblem-debian')
@@ -104,21 +145,12 @@ class FetcherDebian(base.FetcherMux):
 @base.chain(base.FetcherFilter)
 @base.chain(base.FetcherScore)
 class FetcherFirefox(base.Fetcher):
-    FIREFOX_ROOT = os.path.expanduser('~/.mozilla/firefox')
-    FIREFOX_PROFILES = os.path.join(FIREFOX_ROOT, 'profiles.ini')
-
-    FIREFOX_PROFILE_DEFAULT = 'Default'
-    FIREFOX_PROFILE_ISRELATIVE = 'IsRelative'
-    FIREFOX_PROFILE_PATH = 'Path'
-
-    FIREFOX_PLACES_FILE = 'places.sqlite'
-
     def __init__(self):
         super().__init__()
         asyncio.ensure_future(self.setup())
 
     async def setup(self):
-        db = await aiosqlite.connect(f'file:{self.firefox_places()}?immutable=1', uri=True)
+        db = await FirefoxInfo.db_in_profile('places')
         bookmarks = await db.execute('SELECT bookmarks.title, places.url '
                                      'FROM moz_bookmarks bookmarks '
                                      # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
@@ -127,15 +159,19 @@ class FetcherFirefox(base.Fetcher):
             self.reply.append(items.ItemUri(icon='firefox', title=title, subtitle=url))
         await db.close()
 
-    def firefox_places(self):
-        profiles = configparser.ConfigParser()
-        profiles.read(self.FIREFOX_PROFILES)
-        for section in profiles.sections():
-            if section.startswith('Profile') and profiles.has_option(section, self.FIREFOX_PROFILE_DEFAULT) and profiles.getboolean(section, self.FIREFOX_PROFILE_DEFAULT):
-                path = profiles.get(section, self.FIREFOX_PROFILE_PATH)
-                if profiles.getboolean(section, self.FIREFOX_PROFILE_ISRELATIVE):
-                    path = os.path.join(self.FIREFOX_ROOT, path)
-                return os.path.join(path, self.FIREFOX_PLACES_FILE)
+        db = await FirefoxInfo.db_in_profile('favicons')
+        for item in self.reply:
+            icons = await db.execute('SELECT moz_icons.data '
+                                     'FROM moz_pages_w_icons '
+                                     'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
+                                     'JOIN moz_icons ON moz_icons_to_pages.icon_id = moz_icons.id '
+                                     'WHERE moz_pages_w_icons.page_url = ? '
+                                     'ORDER BY moz_icons.width DESC', (item.subtitle,))
+            async for data, in icons:
+                stream = Gio.MemoryInputStream.new_from_data(data)
+                item.icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
+                break
+        await db.close()
 
 
 class FetcherUrl(base.Fetcher):
@@ -145,7 +181,7 @@ class FetcherUrl(base.Fetcher):
         result = urllib.parse.urlsplit(self.request)
         if result.scheme in ('http', 'https'):
             uri = self.request
-        elif result.scheme == '' and '.' in result.path and result.path == self.request:
+        elif result.scheme == '' and '.' in result.path and all(result.path.split('.')) and result.path == self.request:
             uri = urllib.parse.urlunsplit(('https', self.request, '', '', ''))
         else:
             return
