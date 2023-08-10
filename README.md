@@ -3,12 +3,14 @@
 A launcher, similar to `albert` or `kupfer`, written in Python/Gtk4.
 
 At this point this is merely a proof-of-concept.
-- A pipeline of fetchers is constructed (see `src/vsl/root.py` for an example that can be modified).
-- A `Fetcher` is a `GObject.Object` with the following properties:
-  + `request` of type `str` is what the user is looking for.
-  + `reply` of a type implementing `Gio.ListModel` contains a list of `Item`s found.
-- Requests are sent down the pipeline by setting the `request` property.
-- Replies are sent up using Gtk4's various `ListModel` implementations (`FilterListModel` etc.)
+- There are two kinds of objects:
+  + An `Item` object represents an action that the launcher can perform.
+  + A `Fetcher` object fetches `Item`s for a request (a string).
+- A tree of fetchers is constructed in `src/vsl/root.py`.
+- Requests are propagated from the root by calling the fetchers' `do_request` method.
+- A fetcher's reply is represented is stored in its `reply` attribute, a `Gio.ListModel` of `Item`s.
+  Replies flow down to the root using Gtk4's various `ListModel` implementations (`FilterListModel` etc.)
+
 
 ## Requirements
 

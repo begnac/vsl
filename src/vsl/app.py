@@ -63,6 +63,8 @@ class ActionClose(Action):
 
 
 class App(Gtk.Application):
+    request = GObject.Property(type=str, default='')
+
     def __init__(self):
         super().__init__(application_id=f'begnac.{__application__}', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
 
@@ -89,6 +91,8 @@ class App(Gtk.Application):
             action.add_to_app(self)
 
         self.root_fetcher = root.FetcherRoot()
+        self.connect('notify::request', lambda self_, param: self_.root_fetcher.do_request(self_.request))
+
         self.hold()
 
     def do_shutdown(self):
@@ -140,7 +144,7 @@ class App(Gtk.Application):
         win.present()
 
     def set_request(self, request):
-        self.root_fetcher.request = request
+        self.request = request
         win = self.get_active_window()
         if win:
             win.select_entry()

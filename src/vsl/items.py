@@ -37,6 +37,11 @@ class Item(GObject.Object):
     def copy(self):
         return type(self)(**vars(self))
 
+    def copy_change_score(self, delta):
+        new_item = self.copy()
+        new_item.score += delta
+        return new_item
+
     def __repr__(self):
         return f'Item({self.title} ({self.score}))'
 

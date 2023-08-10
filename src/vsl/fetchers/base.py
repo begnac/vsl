@@ -18,7 +18,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import Gtk
 
@@ -38,92 +37,80 @@ def chain(ChainClass, *cargs, **ckwargs):
     return decorator
 
 
-class Fetcher(GObject.Object):
-    request = GObject.Property(type=str, default='')
-    reply = GObject.Property(type=Gio.ListModel)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.connect('notify::request', lambda self_, param: self_.notify_request_cb())
-        if self.reply is None:
-            self.reply = Gio.ListStore(item_type=items.Item)
+class Fetcher:
+    def __init__(self, reply=None):
+        self.reply = self.base_reply = Gio.ListStore(item_type=items.Item) if reply is None else reply
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    def notify_request_cb(self):
+    def do_request(self, request):
         pass
 
 
-class FetcherModifierMixin:
+class FetcherTransform(Fetcher):
     def __init__(self, *, fetcher, **kwargs):
-        super().__init__(**kwargs)
         self.fetcher = fetcher
-        self.fetcher.request = self.request
+        super().__init__(**kwargs)
 
-    def notify_request_cb(self):
-        super().notify_request_cb()
-        self.fetcher.request = self.request
+    def do_request(self, request):
+        self.fetcher.do_request(request)
 
 
-class FetcherTop(FetcherModifierMixin, Fetcher):
-    def __init__(self, fetcher, *, size=5, **kwargs):
+class FetcherTop(FetcherTransform):
+    def __init__(self, fetcher, *, size=5):
         sorter = Gtk.CustomSorter.new(lambda item1, item2, none: int((item2.score - item1.score) * 100))
         reply = Gtk.SliceListModel(model=Gtk.SortListModel(model=fetcher.reply, sorter=sorter), size=size)
-        super().__init__(fetcher=fetcher, reply=reply, **kwargs)
+        super().__init__(fetcher=fetcher, reply=reply)
 
 
-class _FetcherFilter(FetcherModifierMixin, Fetcher):
-    def __init__(self, *, fetcher, filter=None, **kwargs):
+class FetcherMinScore(FetcherTransform):
+    def __init__(self, fetcher, *, score=0.2, **kwargs):
+        filter = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
         super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter), **kwargs)
 
 
-class FetcherFilter(_FetcherFilter):
-    def __init__(self, fetcher, *, score=0.2, **kwargs):
-        super().__init__(fetcher=fetcher, filter=Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score), **kwargs)
+class FetcherNonEmpty(FetcherTransform):
+    def __init__(self, fetcher):
+        self.nonempty = False
+        super().__init__(fetcher=fetcher, reply=Gtk.SliceListModel(model=fetcher.reply, size=0))
+
+    def do_request(self, request):
+        if request:
+            self.nonempty = True
+            self.fetcher.do_request(request)
+            self.reply.set_size(len(self.fetcher.reply))
+        elif self.nonempty:
+            self.nonempty = False
+            self.reply.set_size(0)
 
 
-class FetcherNonEmpty(_FetcherFilter):
-    def __init__(self, fetcher, **kwargs):
-        self.filter = Gtk.CustomFilter.new(lambda item, fetcher_: fetcher_.request != '', fetcher)
-        super().__init__(fetcher=fetcher, filter=self.filter, **kwargs)
+class FetcherChangeScore(FetcherTransform):
+    def __init__(self, fetcher):
+        super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
 
-    def notify_request_cb(self):
-        super().notify_request_cb()
-        self.filter.changed(Gtk.FilterChange.LESS_STRICT if self.request == '' else Gtk.FilterChange.MORE_STRICT)
+    def set_score_delta(self, delta):
+        self.reply.set_map_func(lambda item: item.copy_change_score(delta))
 
 
-class _FetcherScore(FetcherModifierMixin, Fetcher):
-    def __init__(self, fetcher, **kwargs):
-        super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply), **kwargs)
+class FetcherScoreTitle(FetcherTransform):
+    def __init__(self, fetcher):
+        super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
 
-    @staticmethod
-    def change_score(item, delta):
-        new_item = item.copy()
-        new_item.score += delta
-        return new_item
-
-
-class FetcherChangeScore(_FetcherScore):
-    def set_score(self, delta):
-        self.reply.set_map_func(self.change_score, delta)
-
-
-class FetcherScore(_FetcherScore):
-    def notify_request_cb(self):
-        super().notify_request_cb()
-        self.reply.set_map_func(self.scorer, self.fetcher)
+    def do_request(self, request):
+        self.reply.set_map_func(self.scorer, request)
+        super().do_request(request)
 
     @staticmethod
-    def scorer(item, fetcher):
-        rlen = len(fetcher.request)
+    def scorer(item, request):
+        rlen = len(request)
         if not rlen:
             score = 0.0
         else:
-            opcodes = difflib.SequenceMatcher(None, fetcher.request.lower(), item.title.lower()).get_opcodes()
+            opcodes = difflib.SequenceMatcher(None, request.lower(), item.title.lower()).get_opcodes()
             d = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
             score = (1 - 2 * d / rlen) / len(opcodes)
-        return _FetcherScore.change_score(item, score)
+        return item.copy_change_score(score)
 
 
 class FetcherFixed(Fetcher):
@@ -135,70 +122,65 @@ class FetcherFixed(Fetcher):
             self.reply.append(item)
 
 
-class _FetcherMux(Fetcher):
-    fetchers = GObject.Property(type=Gio.ListModel)
-
+class FetcherMux(Fetcher):
     def __init__(self):
-        fetchers = Gio.ListStore(item_type=Fetcher)
-        self.reply_map = Gtk.MapListModel(model=fetchers)
-        self.reply_map.set_map_func(lambda fetcher: fetcher.reply)
-        super().__init__(fetchers=fetchers, reply=Gtk.FlattenListModel(model=self.reply_map))
-
-
-class FetcherMux(_FetcherMux):
-    def __init__(self):
-        super().__init__()
+        self.fetchers = []
+        self.replies = Gio.ListStore(item_type=Gio.ListModel)
         for fetcher_class in self.classes:
             fetcher = fetcher_class()
             self.fetchers.append(fetcher)
+            self.replies.append(fetcher.reply)
+        super().__init__(reply=Gtk.FlattenListModel(model=self.replies))
 
-    def notify_request_cb(self):
+    def do_request(self, request):
         for fetcher in self.fetchers:
-            fetcher.request = self.request
-        self.reply_map.set_map_func(lambda fetcher: fetcher.reply)  # Not clear why, but needed to remap.  Bug in Gtk4 ?
-        super().notify_request_cb()
+            fetcher.do_request(request)
 
 
-class FetcherPrefix(_FetcherMux):
+class FetcherPrefix(Fetcher):
     PREFIX_NONE = 0
     PREFIX_BAD = 1
     PREFIX_EXACT = 2
     PREFIX_OK = 3
 
     def __init__(self, fetcher, prefix, title, icon=None):
-        super().__init__()
         self.fetcher = fetcher
-        self.score_fetcher = FetcherChangeScore(self.fetcher)
-        self.fetcher2 = Fetcher()
-        self.fetchers.append(self.score_fetcher)
-        self.fetchers.append(self.fetcher2)
-
         self.prefix = prefix
-        self.caught_reply = items.Item(title=title, subtitle=f"Prefix is « {prefix} »", icon=icon, score=1.0)
+        self.title = title
+        self.icon = icon
 
-        self.status = self.PREFIX_NONE
+        self.score_fetcher = FetcherChangeScore(fetcher)
+        self.prefix_fetcher = Fetcher()
 
-    def notify_request_cb(self):
-        super().notify_request_cb()
-        if not self.request.startswith('.'):
-            if self.status != self.PREFIX_NONE:
-                self.status = self.PREFIX_NONE
-                self.fetcher2.reply.remove_all()
-                self.score_fetcher.set_score(0.0)
-            self.fetcher.request = self.request
-        elif self.request[1:] in (self.prefix, '?'):
-            if self.status != self.PREFIX_EXACT:
-                self.status = self.PREFIX_EXACT
-                self.fetcher2.reply.append(self.caught_reply)
-                self.fetcher.request = ''
-        elif not self.request[1:].startswith(self.prefix):
-            if self.status != self.PREFIX_BAD:
-                self.status = self.PREFIX_BAD
-                self.fetcher2.reply.remove_all()
-                self.fetcher.request = ''
+        self.replies = Gio.ListStore(item_type=Gio.ListModel)
+        self.replies.append(self.score_fetcher.reply)
+        self.replies.append(self.prefix_fetcher.reply)
+
+        self.prefix_status = self.PREFIX_NONE
+
+        super().__init__(reply=Gtk.FlattenListModel(model=self.replies))
+
+    def do_request(self, request):
+        if not request.startswith('.'):
+            if self.prefix_status != self.PREFIX_NONE:
+                self.prefix_status = self.PREFIX_NONE
+                self.prefix_fetcher.reply.remove_all()
+                self.score_fetcher.set_score_delta(0.0)
+            self.fetcher.do_request(request)
+        elif request[1:] in (self.prefix, '?'):
+            if self.prefix_status != self.PREFIX_EXACT:
+                self.prefix_status = self.PREFIX_EXACT
+                item = items.Item(title=self.title, subtitle=f"Prefix is « {self.prefix} »", icon=self.icon, score=1.0)
+                self.prefix_fetcher.reply.append(item)
+                self.fetcher.do_request('')
+        elif not request[1:].startswith(self.prefix):
+            if self.prefix_status != self.PREFIX_BAD:
+                self.prefix_status = self.PREFIX_BAD
+                self.prefix_fetcher.reply.remove_all()
+                self.fetcher.do_request('')
         else:
-            if self.status != self.PREFIX_OK:
-                self.status = self.PREFIX_OK
-                self.fetcher2.reply.remove_all()
-                self.score_fetcher.set_score(1.0)
-            self.fetcher.request = self.request[len(self.prefix) + 1:]
+            if self.prefix_status != self.PREFIX_OK:
+                self.prefix_status = self.PREFIX_OK
+                self.prefix_fetcher.reply.remove_all()
+                self.score_fetcher.set_score_delta(1.0)
+            self.fetcher.do_request(request[len(self.prefix) + 1:])

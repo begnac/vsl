@@ -27,7 +27,7 @@ class FetcherRoot(base.FetcherMux):
     classes = [
         misc.FetcherActions,
         misc.FetcherGoogle,
-        # misc.FetcherDebian,
+        misc.FetcherDebian,
         misc.FetcherFirefox,
         misc.FetcherUrl,
     ]

@@ -26,6 +26,19 @@ from gi.repository import Gtk
 from . import logger
 
 
+class HeaderBar(Gtk.HeaderBar):
+    def __init__(self):
+        self.title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+        self.title = Gtk.Label(css_classes=['title'], label='Title')
+        self.subtitle = Gtk.Label(css_classes=['subtitle'], label='Subtitle')
+        self.title_box.append(self.title)
+        self.title_box.append(self.subtitle)
+        super().__init__(title_widget=self.title_box)
+
+    def __del__(self):
+        logger.debug(f'Deleting {self}')
+
+
 class Factory(Gtk.SignalListItemFactory):
     def __init__(self):
         super().__init__()
@@ -76,17 +89,13 @@ class Factory(Gtk.SignalListItemFactory):
 
 
 class RequestBox(Gtk.Box):
-    def __init__(self, fetcher_):
-        self.fetcher = fetcher_
-
+    def __init__(self, model):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
         self.entry = Gtk.Entry(css_classes=['request'])
         self.append(self.entry)
 
-        self.fetcher.bind_property('request', self.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
-
-        self.selection = Gtk.SingleSelection(model=self.fetcher.reply)
+        self.selection = Gtk.SingleSelection(model=model)
         self.view = Gtk.ListView(model=self.selection, factory=Factory())
         self.append(self.view)
 
@@ -108,19 +117,6 @@ class RequestBox(Gtk.Box):
     @staticmethod
     def activate_view_cb(view, position):
         view.get_model()[position].activate()
-
-
-class HeaderBar(Gtk.HeaderBar):
-    def __init__(self):
-        self.title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
-        self.title = Gtk.Label(css_classes=['title'], label='Title')
-        self.subtitle = Gtk.Label(css_classes=['subtitle'], label='Subtitle')
-        self.title_box.append(self.title)
-        self.title_box.append(self.subtitle)
-        super().__init__(title_widget=self.title_box)
-
-    def __del__(self):
-        logger.debug(f'Deleting {self}')
 
 
 class CssProvider(Gtk.CssProvider):
@@ -151,7 +147,8 @@ class Window(Gtk.ApplicationWindow):
         fetcher.reply.connect('items-changed', self.items_changed_cb)
 
         self.headerbar = HeaderBar()
-        self.request_box = RequestBox(fetcher)
+        self.request_box = RequestBox(fetcher.reply)
+        app.bind_property('request', self.request_box.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
         self.select_entry()
 
         super().__init__(titlebar=self.headerbar, child=self.request_box, application=app)
