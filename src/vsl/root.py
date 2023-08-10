@@ -19,15 +19,16 @@
 
 
 from .fetchers import base
+from .fetchers import web
 from .fetchers import misc
 
 
 @base.chain(base.FetcherTop)
 class FetcherRoot(base.FetcherMux):
     classes = [
+        web.FetcherGoogle,
+        web.FetcherDebian,
+        web.FetcherFirefox,
+        web.FetcherUrl,
         misc.FetcherActions,
-        misc.FetcherGoogle,
-        misc.FetcherDebian,
-        misc.FetcherFirefox,
-        misc.FetcherUrl,
     ]

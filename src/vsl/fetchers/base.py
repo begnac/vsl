@@ -31,7 +31,7 @@ def chain(ChainClass, *cargs, **ckwargs):
     def decorator(OldClass):
         class NewClass(ChainClass):
             def __init__(self, *args, **kwargs):
-                super().__init__(OldClass(*args, **kwargs, **ckwargs), *cargs, **ckwargs)
+                super().__init__(OldClass(*args, **kwargs), *cargs, **ckwargs)
         NewClass.__name__ = f'{OldClass.__name__}->{ChainClass.__name__}'
         return NewClass
     return decorator
