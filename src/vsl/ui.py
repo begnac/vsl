@@ -139,7 +139,7 @@ class CssProvider(Gtk.CssProvider):
 
 class Window(Gtk.ApplicationWindow):
     def __init__(self, app, fetcher):
-        # self.fetcher = fetcher
+        self.fetcher = fetcher
         fetcher.reply.connect('items-changed', self.items_changed_cb)
 
         self.headerbar = HeaderBar()
@@ -153,9 +153,9 @@ class Window(Gtk.ApplicationWindow):
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    # def destroy(self):
-    #     self.fetcher.reply.disconnect_by_func(self.items_changed_cb)
-    #     super().destroy()
+    def destroy(self):
+        self.fetcher.reply.disconnect_by_func(self.items_changed_cb)
+        super().destroy()
 
     def items_changed_cb(self, model, position, removed, added):
         self.set_default_size(0, 0)
