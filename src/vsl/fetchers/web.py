@@ -68,6 +68,41 @@ class FirefoxInfo:
             await db.close()
 
 
+@base.chain(base.FetcherPrefix, 'fb', _("Firefox bookmarks"), 'firefox')
+@base.chain(base.FetcherTop)
+@base.chain(base.FetcherMinScore)
+@base.chain(base.FetcherScoreTitle)
+@base.chain(base.FetcherNonEmpty)
+class FetcherFirefoxBookmarks(base.Fetcher):
+    def __init__(self):
+        super().__init__()
+        asyncio.ensure_future(self.setup())
+
+    async def setup(self):
+        db = await FirefoxInfo.db_in_profile('places')
+        bookmarks = await db.execute('SELECT bookmarks.title, places.url '
+                                     'FROM moz_bookmarks bookmarks '
+                                     # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
+                                     'JOIN moz_places places ON bookmarks.fk = places.id')
+        async for title, url in bookmarks:
+            self.reply.append(items.ItemUri(icon='firefox', title=title, subtitle=url))
+        await db.close()
+
+        db = await FirefoxInfo.db_in_profile('favicons')
+        for item in self.reply:
+            icons = await db.execute('SELECT moz_icons.data '
+                                     'FROM moz_pages_w_icons '
+                                     'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
+                                     'JOIN moz_icons ON moz_icons_to_pages.icon_id = moz_icons.id '
+                                     'WHERE moz_pages_w_icons.page_url = ? '
+                                     'ORDER BY moz_icons.width DESC', (item.subtitle,))
+            async for data, in icons:
+                stream = Gio.MemoryInputStream.new_from_data(data)
+                item.icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
+                break
+        await db.close()
+
+
 class FetcherWeb(base.Fetcher):
     def __init__(self, url, title, icon=None, favicon=None):
         super().__init__()
@@ -138,41 +173,6 @@ class FetcherDebian(base.FetcherMux):
         FetcherDebianFile,
         FetcherDebianBugs,
     ]
-
-
-@base.chain(base.FetcherPrefix, 'fb', _("Firefox bookmarks"), 'firefox')
-@base.chain(base.FetcherTop)
-@base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreTitle)
-@base.chain(base.FetcherNonEmpty)
-class FetcherFirefox(base.Fetcher):
-    def __init__(self):
-        super().__init__()
-        asyncio.ensure_future(self.setup())
-
-    async def setup(self):
-        db = await FirefoxInfo.db_in_profile('places')
-        bookmarks = await db.execute('SELECT bookmarks.title, places.url '
-                                     'FROM moz_bookmarks bookmarks '
-                                     # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
-                                     'JOIN moz_places places ON bookmarks.fk = places.id')
-        async for title, url in bookmarks:
-            self.reply.append(items.ItemUri(icon='firefox', title=title, subtitle=url))
-        await db.close()
-
-        db = await FirefoxInfo.db_in_profile('favicons')
-        for item in self.reply:
-            icons = await db.execute('SELECT moz_icons.data '
-                                     'FROM moz_pages_w_icons '
-                                     'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
-                                     'JOIN moz_icons ON moz_icons_to_pages.icon_id = moz_icons.id '
-                                     'WHERE moz_pages_w_icons.page_url = ? '
-                                     'ORDER BY moz_icons.width DESC', (item.subtitle,))
-            async for data, in icons:
-                stream = Gio.MemoryInputStream.new_from_data(data)
-                item.icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
-                break
-        await db.close()
 
 
 class FetcherUrl(base.Fetcher):

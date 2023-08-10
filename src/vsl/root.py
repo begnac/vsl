@@ -26,9 +26,9 @@ from .fetchers import misc
 @base.chain(base.FetcherTop)
 class FetcherRoot(base.FetcherMux):
     classes = [
+        web.FetcherFirefoxBookmarks,
         web.FetcherGoogle,
         web.FetcherDebian,
-        web.FetcherFirefox,
         web.FetcherUrl,
         misc.FetcherActions,
     ]
