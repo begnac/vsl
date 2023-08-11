@@ -40,6 +40,7 @@ class FetcherActions(base.FetcherFixed):
         )
 
 
+@base.chain(base.FetcherPrefix, 'lo', _("Locate files"), 'system-search')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreName)
@@ -64,15 +65,14 @@ class FetcherLocate(base.Fetcher):
                 self.reply.remove_all()
                 for filename in filenames.decode().split('\n')[:-1]:
                     content_type, encoding = mimetypes.guess_type(filename)
-                    basename = os.path.basename(filename)
                     if content_type is not None:
                         icon = Gio.content_type_get_icon(content_type)
-                        name = _("{basename} ({description})").format(basename=basename, description=Gio.content_type_get_description(content_type))
+                        title = _("{{name}} ({description})").format(description=Gio.content_type_get_description(content_type))
                     else:
                         icon = None
-                        name = basename
+                        title = None
                     score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
-                    item = items.ItemFile(name=name, detail=filename, icon=icon, score=score)
+                    item = items.ItemFile(name=os.path.basename(filename), detail=filename, title=title, icon=icon, score=score)
                     self.reply.append(item)
         finally:
             self.future = None

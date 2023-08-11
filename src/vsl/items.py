@@ -24,11 +24,11 @@ from gi.repository import Gtk
 
 
 class Item(GObject.Object):
-    def __init__(self, *, name, detail, title="{name}", icon=None, score=0.0):
+    def __init__(self, *, name, detail, title=None, icon=None, score=0.0):
         super().__init__()
         self.name = name
         self.detail = detail
-        self.title = title
+        self.title = title or "{name}"
         self.icon = icon
         self.score = score
 
