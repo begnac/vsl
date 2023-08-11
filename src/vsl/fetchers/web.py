@@ -57,10 +57,6 @@ class FirefoxInfo:
     async def get_favicon(cls, favicon):
         db = await cls.db_in_profile('favicons')
         try:
-            # icons = await db.execute('SELECT icon_url '
-            #                          'FROM moz_icons '
-            #                          'WHERE icon_url LIKE "%freedesktop%" ')
-            # async for x in icons: print(x)
             icons = await db.execute('SELECT data '
                                      'FROM moz_icons '
                                      'WHERE icon_url = ? '
@@ -89,37 +85,37 @@ class FirefoxInfo:
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreName)
 @base.chain(base.FetcherNonEmpty)
-class FetcherFirefoxBookmarks(base.Fetcher):
+class FetcherFirefoxBookmarks(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
         asyncio.ensure_future(self.setup())
 
     async def setup(self):
-        db = await FirefoxInfo.db_in_profile('places')
-        bookmarks = await db.execute('SELECT bookmarks.title, places.url '
-                                     'FROM moz_bookmarks bookmarks '
-                                     # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
-                                     'JOIN moz_places places ON bookmarks.fk = places.id')
+        db1 = await FirefoxInfo.db_in_profile('places')
+        db2 = await FirefoxInfo.db_in_profile('favicons')
+        bookmarks = await db1.execute('SELECT bookmarks.title, places.url '
+                                      'FROM moz_bookmarks bookmarks '
+                                      # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
+                                      'JOIN moz_places places ON bookmarks.fk = places.id')
         async for title, url in bookmarks:
-            self.reply.append(items.ItemUri(name=title, detail=url, title=_("Open bookmark: {name}"), icon='firefox'))
-        await db.close()
-
-        db = await FirefoxInfo.db_in_profile('favicons')
-        for item in self.reply:
-            icons = await db.execute('SELECT moz_icons.data '
-                                     'FROM moz_pages_w_icons '
-                                     'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
-                                     'JOIN moz_icons ON moz_icons_to_pages.icon_id = moz_icons.id '
-                                     'WHERE moz_pages_w_icons.page_url = ? '
-                                     'ORDER BY moz_icons.width DESC', (item.detail,))
+            icons = await db2.execute('SELECT moz_icons.data '
+                                      'FROM moz_pages_w_icons '
+                                      'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
+                                      'JOIN moz_icons ON moz_icons_to_pages.icon_id = moz_icons.id '
+                                      'WHERE moz_pages_w_icons.page_url = ? '
+                                      'ORDER BY moz_icons.width DESC', (url,))
             async for data, in icons:
                 stream = Gio.MemoryInputStream.new_from_data(data)
-                item.icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
+                icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
                 break
-        await db.close()
+            else:
+                icon = 'firefox'
+            self.append_item(items.ItemUri(name=title, detail=url, title=_("Open bookmark: {name}"), icon=icon))
+        await db2.close()
+        await db1.close()
 
 
-class FetcherWeb(base.Fetcher):
+class FetcherWeb(base.FetcherLeaf):
     def __init__(self, url, name, icon=None, favicon=None):
         super().__init__()
         self.url = url
@@ -133,9 +129,9 @@ class FetcherWeb(base.Fetcher):
         self.icon = await FirefoxInfo.get_favicon(favicon)
 
     def do_request(self, request):
-        self.base_reply.remove_all()
+        self.reply.remove_all()
         if request:
-            self.base_reply.append(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
+            self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
 
 
 class FetcherWebPrefix(base.FetcherPrefix):
@@ -191,7 +187,7 @@ class FetcherDebian(base.FetcherMux):
     ]
 
 
-class FetcherUrl(base.Fetcher):
+class FetcherUrl(base.FetcherLeaf):
     def do_request(self, request):
         self.reply.remove_all()
         result = urllib.parse.urlsplit(request)
@@ -201,5 +197,5 @@ class FetcherUrl(base.Fetcher):
             uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
         else:
             return
-        item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser', score=0.3)
-        self.reply.append(item)
+        item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser')
+        self.append_item(item, 0.3)

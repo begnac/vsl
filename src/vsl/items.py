@@ -23,25 +23,28 @@ from gi.repository import Gio
 from gi.repository import Gtk
 
 
-class Item(GObject.Object):
-    def __init__(self, *, name, detail, title=None, icon=None, score=0.0):
+class ScoredItem(GObject.Object):
+    def __init__(self, item, score=0.0):
         super().__init__()
+        self.item = item
+        self.score = score
+
+    def copy_change_score(self, delta):
+        return ScoredItem(self.item, self.score + delta)
+
+    def __getattr__(self, name):
+        return getattr(self.item, name)
+
+
+class Item:
+    def __init__(self, *, name, detail, title=None, icon=None):
         self.name = name
         self.detail = detail
         self.title = title or "{name}"
         self.icon = icon
-        self.score = score
 
     def activate(self):
         pass
-
-    def copy(self):
-        return type(self)(**vars(self))
-
-    def copy_change_score(self, delta):
-        new_item = self.copy()
-        new_item.score += delta
-        return new_item
 
     def format_title(self):
         return self.title.format_map(vars(self))

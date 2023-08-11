@@ -32,19 +32,18 @@ from .. import items
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreName)
-class FetcherActions(base.FetcherFixed):
+class FetcherActions(base.FetcherLeaf):
     def __init__(self):
-        super().__init__(
-            items.ItemAction(name=_("Quit"), detail='quit', icon='face-devilish'),
-            items.ItemAction(name=_("Close window"), detail='close', icon='face-devilish'),
-        )
+        super().__init__()
+        self.append_item(items.ItemAction(name=_("Quit"), detail='quit', icon='face-devilish'))
+        self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='face-devilish'))
 
 
 @base.chain(base.FetcherPrefix, 'lo', _("Locate files"), 'system-search')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreName)
-class FetcherLocate(base.Fetcher):
+class FetcherLocate(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
         self.future = None
@@ -72,8 +71,8 @@ class FetcherLocate(base.Fetcher):
                         icon = None
                         title = None
                     score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
-                    item = items.ItemFile(name=os.path.basename(filename), detail=filename, title=title, icon=icon, score=score)
-                    self.reply.append(item)
+                    item = items.ItemFile(name=os.path.basename(filename), detail=filename, title=title, icon=icon)
+                    self.append_item(item, score)
         finally:
             self.future = None
 
@@ -86,12 +85,12 @@ class ItemDesktop(items.Item):
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreName)
-class _FetcherLaunchApp(base.Fetcher):
+class _FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
         for appinfo in Gio.app_info_get_all():
             item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("Run application: {name}"), icon=appinfo.get_icon())
-            self.reply.append(item)
+            self.append_item(item)
 
 
 class FetcherLaunchApp(base.FetcherPrefix):

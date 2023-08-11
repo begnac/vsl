@@ -37,18 +37,29 @@ def chain(ChainClass, *cargs, **ckwargs):
     return decorator
 
 
-class Fetcher:
-    def __init__(self, reply=None):
-        self.reply = self.base_reply = Gio.ListStore(item_type=items.Item) if reply is None else reply
+class FetcherBase:
+    def __init__(self, *, reply):
+        self.reply = reply
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
     def do_request(self, request):
+        raise NotImplementedError
+
+
+class FetcherLeaf(FetcherBase):
+    def __init__(self):
+        super().__init__(reply=Gio.ListStore(item_type=items.ScoredItem))
+
+    def do_request(self, request):
         pass
 
+    def append_item(self, item, score=0.0):
+        self.reply.append(items.ScoredItem(item, score))
 
-class FetcherTransform(Fetcher):
+
+class FetcherTransform(FetcherBase):
     def __init__(self, *, fetcher, **kwargs):
         self.fetcher = fetcher
         super().__init__(**kwargs)
@@ -113,16 +124,7 @@ class FetcherScoreName(FetcherTransform):
         return item.copy_change_score(score)
 
 
-class FetcherFixed(Fetcher):
-    def __init__(self, *_items, items=()):
-        super().__init__()
-        for item in _items:
-            self.reply.append(item)
-        for item in items:
-            self.reply.append(item)
-
-
-class FetcherMux(Fetcher):
+class FetcherMux(FetcherBase):
     def __init__(self):
         self.fetchers = []
         self.replies = Gio.ListStore(item_type=Gio.ListModel)
@@ -137,7 +139,7 @@ class FetcherMux(Fetcher):
             fetcher.do_request(request)
 
 
-class FetcherPrefix(Fetcher):
+class FetcherPrefix(FetcherBase):
     PREFIX_NONE = 0
     PREFIX_BAD = 1
     PREFIX_EXACT = 2
@@ -150,7 +152,7 @@ class FetcherPrefix(Fetcher):
         self.icon = icon
 
         self.score_fetcher = FetcherChangeScore(fetcher)
-        self.prefix_fetcher = Fetcher()
+        self.prefix_fetcher = FetcherLeaf()
 
         self.replies = Gio.ListStore(item_type=Gio.ListModel)
         self.replies.append(self.score_fetcher.reply)
@@ -170,8 +172,8 @@ class FetcherPrefix(Fetcher):
         elif request[1:] in (self.prefix, '?'):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
-                item = items.Item(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, score=1.0)
-                self.prefix_fetcher.reply.append(item)
+                item = items.Item(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon)
+                self.prefix_fetcher.append_item(item, score=1.0)
                 self.fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):
             if self.prefix_status != self.PREFIX_BAD:
