@@ -31,4 +31,6 @@ class FetcherRoot(base.FetcherMux):
         web.FetcherDebian,
         web.FetcherUrl,
         misc.FetcherActions,
+        misc.FetcherLocate,
+        misc.FetcherLaunchApp,
     ]

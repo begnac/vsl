@@ -170,7 +170,7 @@ class FetcherPrefix(Fetcher):
         elif request[1:] in (self.prefix, '?'):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
-                item = items.Item(title=self.title, subtitle=f"Prefix is « {self.prefix} »", icon=self.icon, score=1.0)
+                item = items.Item(title=self.title, detail=f"Prefix is « {self.prefix} »", icon=self.icon, score=1.0)
                 self.prefix_fetcher.reply.append(item)
                 self.fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):

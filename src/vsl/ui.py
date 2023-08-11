@@ -19,6 +19,7 @@
 
 
 from gi.repository import GObject
+from gi.repository import Gio
 from gi.repository import GdkPixbuf
 from gi.repository import Gdk
 from gi.repository import Gtk
@@ -54,12 +55,12 @@ class Factory(Gtk.SignalListItemFactory):
         box.icon = Gtk.Image(icon_size=Gtk.IconSize.LARGE)
         box.titlebox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
         box.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-title'])
-        box.subtitle = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-subtitle'])
+        box.detail = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-detail'])
 
         box.append(box.icon)
         box.append(box.titlebox)
         box.titlebox.append(box.title)
-        box.titlebox.append(box.subtitle)
+        box.titlebox.append(box.detail)
 
         listitem.set_child(box)
 
@@ -71,13 +72,15 @@ class Factory(Gtk.SignalListItemFactory):
             pass
         elif isinstance(item.icon, str):
             box.icon.set_from_icon_name(item.icon)
+        elif isinstance(item.icon, Gio.Icon):
+            box.icon.set_from_gicon(item.icon)
         elif isinstance(item.icon, GdkPixbuf.Pixbuf):
             box.icon.set_from_pixbuf(item.icon)
         else:
             raise ValueError
         box.title.set_label(f'{item.title} ({item.score})')
         # box.title.set_label(item.title)
-        box.subtitle.set_label(item.subtitle)
+        box.detail.set_label(item.detail)
 
     # @staticmethod
     # def unbind_cb(self, item):
@@ -124,7 +127,7 @@ class CssProvider(Gtk.CssProvider):
     label.item-title {
       font-size: larger;
     }
-    label.item-subtitle {
+    label.item-detail {
       font-size: smaller;
       color: rgba(0.5,0.5,0.5,0.5);
     }

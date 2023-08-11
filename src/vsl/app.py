@@ -83,8 +83,7 @@ class App(Gtk.Application):
         ui.CssProvider().add_myself()
 
         self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.quit)
-        self.event_loop = gasyncio.GAsyncIOEventLoop()
-        self.event_loop.start_slave_loop()
+        gasyncio.start_slave_loop()
 
         self.actions = (ActionQuit(), ActionClose())
         for action in self.actions:
@@ -102,8 +101,7 @@ class App(Gtk.Application):
         for action in self.actions:
             action.remove_from_app(self)
         self.release()
-        self.event_loop.stop_slave_loop()
-        self.event_loop.close()
+        gasyncio.stop_slave_loop()
         GLib.source_remove(self.sigint_source)
         Gtk.Application.do_shutdown(self)
 

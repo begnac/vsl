@@ -57,6 +57,10 @@ class FirefoxInfo:
     async def get_favicon(cls, favicon):
         db = await cls.db_in_profile('favicons')
         try:
+            # icons = await db.execute('SELECT icon_url '
+            #                          'FROM moz_icons '
+            #                          'WHERE icon_url LIKE "%freedesktop%" ')
+            # async for x in icons: print(x)
             icons = await db.execute('SELECT data '
                                      'FROM moz_icons '
                                      'WHERE icon_url = ? '
@@ -64,6 +68,18 @@ class FirefoxInfo:
             async for data, in icons:
                 stream = Gio.MemoryInputStream.new_from_data(data)
                 return GdkPixbuf.Pixbuf.new_from_stream(stream)
+        finally:
+            await db.close()
+
+    @classmethod
+    async def _DEBUG_find_favicon(cls, pattern):
+        db = await cls.db_in_profile('favicons')
+        try:
+            icons = await db.execute('SELECT icon_url '
+                                     'FROM moz_icons '
+                                     'WHERE icon_url LIKE ? ', (pattern,))
+            async for url, in icons:
+                print(url)
         finally:
             await db.close()
 
@@ -85,7 +101,7 @@ class FetcherFirefoxBookmarks(base.Fetcher):
                                      # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
                                      'JOIN moz_places places ON bookmarks.fk = places.id')
         async for title, url in bookmarks:
-            self.reply.append(items.ItemUri(icon='firefox', title=title, subtitle=url))
+            self.reply.append(items.ItemUri(icon='firefox', title=title, detail=url))
         await db.close()
 
         db = await FirefoxInfo.db_in_profile('favicons')
@@ -95,7 +111,7 @@ class FetcherFirefoxBookmarks(base.Fetcher):
                                      'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
                                      'JOIN moz_icons ON moz_icons_to_pages.icon_id = moz_icons.id '
                                      'WHERE moz_pages_w_icons.page_url = ? '
-                                     'ORDER BY moz_icons.width DESC', (item.subtitle,))
+                                     'ORDER BY moz_icons.width DESC', (item.detail,))
             async for data, in icons:
                 stream = Gio.MemoryInputStream.new_from_data(data)
                 item.icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
@@ -119,7 +135,7 @@ class FetcherWeb(base.Fetcher):
     def do_request(self, request):
         self.base_reply.remove_all()
         if request:
-            self.base_reply.append(items.ItemUri(title=self.title, subtitle=self.url.replace('%s', request), icon=self.icon))
+            self.base_reply.append(items.ItemUri(title=self.title, detail=self.url.replace('%s', request), icon=self.icon))
 
 
 class FetcherWebPrefix(base.FetcherPrefix):
@@ -185,5 +201,5 @@ class FetcherUrl(base.Fetcher):
             uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
         else:
             return
-        item = items.ItemUri(title=_("Open URL in browser"), subtitle=uri, icon='web-browser', score=1.0)
+        item = items.ItemUri(title=_("Open URL in browser"), detail=uri, icon='web-browser', score=1.0)
         self.reply.append(item)
