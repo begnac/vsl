@@ -101,7 +101,7 @@ class FetcherFirefoxBookmarks(base.Fetcher):
                                      # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
                                      'JOIN moz_places places ON bookmarks.fk = places.id')
         async for title, url in bookmarks:
-            self.reply.append(items.ItemUri(icon='firefox', name=title, detail=url))
+            self.reply.append(items.ItemUri(name=title, detail=url, title=_("Open bookmark: {name}"), icon='firefox'))
         await db.close()
 
         db = await FirefoxInfo.db_in_profile('favicons')
