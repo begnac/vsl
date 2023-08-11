@@ -22,6 +22,8 @@ from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import Gtk
 
+import difflib
+
 
 class ScoredItem(GObject.Object):
     def __init__(self, item, score=0.0):
@@ -29,8 +31,11 @@ class ScoredItem(GObject.Object):
         self.item = item
         self.score = score
 
-    def copy_change_score(self, delta):
+    def apply_delta(self, delta):
         return ScoredItem(self.item, self.score + delta)
+
+    def apply_request(self, request):
+        return self.apply_delta(self.item.score(request))
 
 
 class ItemBase:
@@ -45,6 +50,14 @@ class ItemBase:
 
     def format_title(self):
         return self.title.format_map(vars(self))
+
+    def score(self, request):
+        rlen = len(request)
+        if not rlen:
+            return 0.0
+        opcodes = difflib.SequenceMatcher(None, request.lower(), self.name.lower()).get_opcodes()
+        d = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
+        return (1 - 2 * d / rlen) / len(opcodes)
 
     def __repr__(self):
         return f'Item({self.format_title()})'
@@ -61,6 +74,9 @@ class ItemChangeRequest(ItemBase):
 class ItemNoop(ItemBase):
     def activate(self):
         pass
+
+    def score(self, request):
+        return 0.2
 
 
 class ItemUri(ItemBase):

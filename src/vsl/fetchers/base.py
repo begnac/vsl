@@ -21,8 +21,6 @@
 from gi.repository import Gio
 from gi.repository import Gtk
 
-import difflib
-
 from .. import items
 from .. import logger
 
@@ -101,7 +99,7 @@ class FetcherChangeScore(FetcherTransform):
         super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
 
     def set_score_delta(self, delta):
-        self.reply.set_map_func(lambda item: item.copy_change_score(delta))
+        self.reply.set_map_func(lambda i: i.apply_delta(delta))
 
 
 class FetcherScoreName(FetcherTransform):
@@ -109,19 +107,8 @@ class FetcherScoreName(FetcherTransform):
         super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
 
     def do_request(self, request):
-        self.reply.set_map_func(self.scorer, request)
+        self.reply.set_map_func(lambda i, r: i.apply_request(r), request)
         super().do_request(request)
-
-    @staticmethod
-    def scorer(scored_item, request):
-        rlen = len(request)
-        if not rlen:
-            score = 0.0
-        else:
-            opcodes = difflib.SequenceMatcher(None, request.lower(), scored_item.item.name.lower()).get_opcodes()
-            d = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
-            score = (1 - 2 * d / rlen) / len(opcodes)
-        return scored_item.copy_change_score(score)
 
 
 class FetcherMux(FetcherBase):
