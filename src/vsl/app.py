@@ -66,7 +66,7 @@ class App(Gtk.Application):
     request = GObject.Property(type=str, default='')
 
     def __init__(self):
-        super().__init__(application_id=f'begnac.{__application__}', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        super().__init__(application_id=f'begnac.{__application__}', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE | Gio.ApplicationFlags.ALLOW_REPLACEMENT)
 
         self.add_main_option('version', ord('V'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display version"), None)
         self.add_main_option('copyright', ord('C'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display copyright"), None)
