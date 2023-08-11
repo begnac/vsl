@@ -113,15 +113,15 @@ class FetcherScoreName(FetcherTransform):
         super().do_request(request)
 
     @staticmethod
-    def scorer(item, request):
+    def scorer(scored_item, request):
         rlen = len(request)
         if not rlen:
             score = 0.0
         else:
-            opcodes = difflib.SequenceMatcher(None, request.lower(), item.name.lower()).get_opcodes()
+            opcodes = difflib.SequenceMatcher(None, request.lower(), scored_item.item.name.lower()).get_opcodes()
             d = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
             score = (1 - 2 * d / rlen) / len(opcodes)
-        return item.copy_change_score(score)
+        return scored_item.copy_change_score(score)
 
 
 class FetcherMux(FetcherBase):
@@ -172,7 +172,7 @@ class FetcherPrefix(FetcherBase):
         elif request[1:] in (self.prefix, ''):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
-                item = items.ItemChangeRequest(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, pattern='\.$', repl='.' + self.prefix)
+                item = items.ItemChangeRequest(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, pattern='\\.$', repl='.' + self.prefix)
                 self.prefix_fetcher.append_item(item, score=1.0)
                 self.fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):

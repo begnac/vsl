@@ -32,9 +32,6 @@ class ScoredItem(GObject.Object):
     def copy_change_score(self, delta):
         return ScoredItem(self.item, self.score + delta)
 
-    def __getattr__(self, name):
-        return getattr(self.item, name)
-
 
 class ItemBase:
     def __init__(self, *, name, detail, title=None, icon=None):
@@ -59,6 +56,11 @@ class ItemChangeRequest(ItemBase):
         super().__init__(**kwargs)
         self.pattern = pattern
         self.repl = repl
+
+
+class ItemNoop(ItemBase):
+    def activate(self):
+        pass
 
 
 class ItemUri(ItemBase):

@@ -49,32 +49,42 @@ class FetcherLocate(base.FetcherLeaf):
         self.future = None
 
     def do_request(self, request):
-        if self.future is not None:
-            self.future.cancel()
-
         self.future = asyncio.ensure_future(self.async_do_request(request))
 
     async def async_do_request(self, request):
-        try:
-            if len(request) < 3:
-                self.reply.remove_all()
-            else:
-                process = await asyncio.create_subprocess_exec('plocate', '-biN', request, stdout=asyncio.subprocess.PIPE)
-                filenames = await process.stdout.read()
-                self.reply.remove_all()
-                for filename in filenames.decode().split('\n')[:-1]:
-                    content_type, encoding = mimetypes.guess_type(filename)
-                    if content_type is not None:
-                        icon = Gio.content_type_get_icon(content_type)
-                        title = _("{{name}} ({description})").format(description=Gio.content_type_get_description(content_type))
-                    else:
-                        icon = None
-                        title = None
-                    score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
-                    item = items.ItemFile(name=os.path.basename(filename), detail=filename, title=title, icon=icon)
-                    self.append_item(item, score)
-        finally:
+        future = asyncio.current_task()
+        if future != self.future:
+            return
+
+        if len(request) < 3:
+            self.reply.remove_all()
+            self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon='system-search'), 0.2)
             self.future = None
+            return
+
+        try:
+            process = await asyncio.create_subprocess_exec('plocate', '-biN', request, stdout=asyncio.subprocess.PIPE)
+            if future != self.future:
+                process.kill()
+                return
+            filenames = await process.stdout.read()
+            if future != self.future:
+                return
+            self.reply.remove_all()
+            for filename in filenames.decode().split('\n')[:-1]:
+                content_type, encoding = mimetypes.guess_type(filename)
+                if content_type is not None:
+                    icon = Gio.content_type_get_icon(content_type)
+                    title = _("{{name}} ({description})").format(description=Gio.content_type_get_description(content_type))
+                else:
+                    icon = None
+                    title = None
+                score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
+                item = items.ItemFile(name=os.path.basename(filename), detail=filename, title=title, icon=icon)
+                self.append_item(item, score)
+        finally:
+            if self.future == future:
+                self.future = None
 
 
 class ItemDesktop(items.ItemBase):

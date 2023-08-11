@@ -69,7 +69,8 @@ class Factory(Gtk.SignalListItemFactory):
 
     @staticmethod
     def bind_cb(self, listitem):
-        item = listitem.get_item()
+        scored_item = listitem.get_item()
+        item = scored_item.item
         box = listitem.get_child()
         if item.icon is None:
             pass
@@ -81,7 +82,7 @@ class Factory(Gtk.SignalListItemFactory):
             box.icon.set_from_pixbuf(item.icon)
         else:
             raise ValueError
-        box.title.set_label(f'{item.format_title()} ({item.score})')
+        box.title.set_label(f'{item.format_title()} ({scored_item.score})')
         box.detail.set_label(item.detail)
 
     # @staticmethod
