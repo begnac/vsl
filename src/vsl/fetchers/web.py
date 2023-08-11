@@ -201,5 +201,5 @@ class FetcherUrl(base.Fetcher):
             uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
         else:
             return
-        item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser', score=1.0)
+        item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser', score=0.3)
         self.reply.append(item)
