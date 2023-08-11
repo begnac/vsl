@@ -21,6 +21,7 @@
 import sys
 
 from . import app
+from . import __application__
 
 
-app.App().run(sys.argv)
+app.App().run([__application__] + sys.argv[1:])
