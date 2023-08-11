@@ -105,7 +105,7 @@ class RequestBox(Gtk.Box):
         self.view = Gtk.ListView(model=self.selection, factory=Factory())
         self.append(self.view)
 
-        self.entry.connect('activate', self.activate_entry_cb, self.view)
+        self.entry.connect('activate', self.activate_entry_cb, self.selection)
         self.view.connect('activate', self.activate_view_cb, self.entry)
         self.selection.connect('items-changed', lambda model, position, removed, added: model.set_selected(0))
 
@@ -123,8 +123,7 @@ class RequestBox(Gtk.Box):
         entry.grab_focus()
 
     @staticmethod
-    def activate_entry_cb(entry, view):
-        model = view.get_model()
+    def activate_entry_cb(entry, model):
         for i in range(len(model)):
             if model.is_selected(i):
                 RequestBox.activate_item(model[i].item, entry)
