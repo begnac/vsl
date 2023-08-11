@@ -77,7 +77,7 @@ class FetcherLocate(base.FetcherLeaf):
             self.future = None
 
 
-class ItemDesktop(items.Item):
+class ItemDesktop(items.ItemBase):
     def activate(self):
         Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
 
