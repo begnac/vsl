@@ -84,7 +84,6 @@ class FirefoxInfo:
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreName)
-@base.chain(base.FetcherNonEmpty)
 class FetcherFirefoxBookmarks(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
@@ -130,8 +129,7 @@ class FetcherWeb(base.FetcherLeaf):
 
     def do_request(self, request):
         self.reply.remove_all()
-        if request:
-            self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
+        self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
 
 
 class FetcherWebPrefix(base.FetcherPrefix):

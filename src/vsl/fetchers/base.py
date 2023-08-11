@@ -152,10 +152,11 @@ class FetcherPrefix(FetcherBase):
         self.icon = icon
 
         self.score_fetcher = FetcherChangeScore(fetcher)
+        self.nonempty_fetcher = FetcherNonEmpty(self.score_fetcher)
         self.prefix_fetcher = FetcherLeaf()
 
         self.replies = Gio.ListStore(item_type=Gio.ListModel)
-        self.replies.append(self.score_fetcher.reply)
+        self.replies.append(self.nonempty_fetcher.reply)
         self.replies.append(self.prefix_fetcher.reply)
 
         self.prefix_status = self.PREFIX_NONE
@@ -168,21 +169,21 @@ class FetcherPrefix(FetcherBase):
                 self.prefix_status = self.PREFIX_NONE
                 self.prefix_fetcher.reply.remove_all()
                 self.score_fetcher.set_score_delta(0.0)
-            self.fetcher.do_request(request)
+            self.nonempty_fetcher.do_request(request)
         elif request[1:] in (self.prefix, ''):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
                 item = items.ItemChangeRequest(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, pattern='\\.$', repl='.' + self.prefix)
                 self.prefix_fetcher.append_item(item, score=1.0)
-                self.fetcher.do_request('')
+                self.nonempty_fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):
             if self.prefix_status != self.PREFIX_BAD:
                 self.prefix_status = self.PREFIX_BAD
                 self.prefix_fetcher.reply.remove_all()
-                self.fetcher.do_request('')
+                self.nonempty_fetcher.do_request('')
         else:
             if self.prefix_status != self.PREFIX_OK:
                 self.prefix_status = self.PREFIX_OK
                 self.prefix_fetcher.reply.remove_all()
                 self.score_fetcher.set_score_delta(1.0)
-            self.fetcher.do_request(request[len(self.prefix) + 1:])
+            self.nonempty_fetcher.do_request(request[len(self.prefix) + 1:])
