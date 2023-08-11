@@ -93,7 +93,7 @@ class FetcherChangeScore(FetcherTransform):
         self.reply.set_map_func(lambda item: item.copy_change_score(delta))
 
 
-class FetcherScoreTitle(FetcherTransform):
+class FetcherScoreName(FetcherTransform):
     def __init__(self, fetcher):
         super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
 
@@ -107,7 +107,7 @@ class FetcherScoreTitle(FetcherTransform):
         if not rlen:
             score = 0.0
         else:
-            opcodes = difflib.SequenceMatcher(None, request.lower(), item.title.lower()).get_opcodes()
+            opcodes = difflib.SequenceMatcher(None, request.lower(), item.name.lower()).get_opcodes()
             d = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
             score = (1 - 2 * d / rlen) / len(opcodes)
         return item.copy_change_score(score)
@@ -143,10 +143,10 @@ class FetcherPrefix(Fetcher):
     PREFIX_EXACT = 2
     PREFIX_OK = 3
 
-    def __init__(self, fetcher, prefix, title, icon=None):
+    def __init__(self, fetcher, prefix, name, icon=None):
         self.fetcher = fetcher
         self.prefix = prefix
-        self.title = title
+        self.name = name
         self.icon = icon
 
         self.score_fetcher = FetcherChangeScore(fetcher)
@@ -170,7 +170,7 @@ class FetcherPrefix(Fetcher):
         elif request[1:] in (self.prefix, '?'):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
-                item = items.Item(title=self.title, detail=f"Prefix is « {self.prefix} »", icon=self.icon, score=1.0)
+                item = items.Item(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, score=1.0)
                 self.prefix_fetcher.reply.append(item)
                 self.fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):

@@ -53,14 +53,14 @@ class Factory(Gtk.SignalListItemFactory):
     def setup_cb(self, listitem):
         box = Gtk.Box(css_name='item-box')
         box.icon = Gtk.Image(icon_size=Gtk.IconSize.LARGE)
-        box.titlebox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
-        box.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-title'])
+        namebox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+        box.name = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-name'])
         box.detail = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-detail'])
 
         box.append(box.icon)
-        box.append(box.titlebox)
-        box.titlebox.append(box.title)
-        box.titlebox.append(box.detail)
+        box.append(namebox)
+        namebox.append(box.name)
+        namebox.append(box.detail)
 
         listitem.set_child(box)
 
@@ -78,8 +78,8 @@ class Factory(Gtk.SignalListItemFactory):
             box.icon.set_from_pixbuf(item.icon)
         else:
             raise ValueError
-        box.title.set_label(f'{item.title} ({item.score})')
-        # box.title.set_label(item.title)
+        box.name.set_label(f'{item.name} ({item.score})')
+        # box.name.set_label(item.name)
         box.detail.set_label(item.detail)
 
     # @staticmethod
@@ -124,7 +124,7 @@ class RequestBox(Gtk.Box):
 
 class CssProvider(Gtk.CssProvider):
     CSS = '''
-    label.item-title {
+    label.item-name {
       font-size: larger;
     }
     label.item-detail {

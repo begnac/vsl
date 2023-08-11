@@ -31,18 +31,18 @@ from .. import items
 
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreTitle)
+@base.chain(base.FetcherScoreName)
 class FetcherActions(base.FetcherFixed):
     def __init__(self):
         super().__init__(
-            items.ItemAction(title=_("Quit"), detail='quit', icon='face-devilish'),
-            items.ItemAction(title=_("Close window"), detail='close', icon='face-devilish'),
+            items.ItemAction(name=_("Quit"), detail='quit', icon='face-devilish'),
+            items.ItemAction(name=_("Close window"), detail='close', icon='face-devilish'),
         )
 
 
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreTitle)
+@base.chain(base.FetcherScoreName)
 class FetcherLocate(base.Fetcher):
     def __init__(self):
         super().__init__()
@@ -67,11 +67,11 @@ class FetcherLocate(base.Fetcher):
                     basename = os.path.basename(name)
                     if content_type is not None:
                         icon = Gio.content_type_get_icon(content_type)
-                        title = _("{basename} ({description})").format(basename=basename, description=Gio.content_type_get_description(content_type))
+                        name = _("{basename} ({description})").format(basename=basename, description=Gio.content_type_get_description(content_type))
                     else:
                         icon = None
-                        title = basename
-                    item = items.ItemFile(title=title, detail=name, icon=icon)
+                        name = basename
+                    item = items.ItemFile(name=name, detail=name, icon=icon)
                     self.reply.append(item)
         finally:
             self.future = None
@@ -84,12 +84,12 @@ class ItemDesktop(items.Item):
 
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreTitle)
+@base.chain(base.FetcherScoreName)
 class _FetcherLaunchApp(base.Fetcher):
     def __init__(self):
         super().__init__()
         for appinfo in Gio.app_info_get_all():
-            item = ItemDesktop(title=appinfo.get_name(), detail=appinfo.get_filename(), icon=appinfo.get_icon())
+            item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), icon=appinfo.get_icon())
             self.reply.append(item)
 
 

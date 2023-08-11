@@ -87,7 +87,7 @@ class FirefoxInfo:
 @base.chain(base.FetcherPrefix, 'fb', _("Firefox bookmarks"), 'firefox')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreTitle)
+@base.chain(base.FetcherScoreName)
 @base.chain(base.FetcherNonEmpty)
 class FetcherFirefoxBookmarks(base.Fetcher):
     def __init__(self):
@@ -101,7 +101,7 @@ class FetcherFirefoxBookmarks(base.Fetcher):
                                      # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
                                      'JOIN moz_places places ON bookmarks.fk = places.id')
         async for title, url in bookmarks:
-            self.reply.append(items.ItemUri(icon='firefox', title=title, detail=url))
+            self.reply.append(items.ItemUri(icon='firefox', name=title, detail=url))
         await db.close()
 
         db = await FirefoxInfo.db_in_profile('favicons')
@@ -120,10 +120,10 @@ class FetcherFirefoxBookmarks(base.Fetcher):
 
 
 class FetcherWeb(base.Fetcher):
-    def __init__(self, url, title, icon=None, favicon=None):
+    def __init__(self, url, name, icon=None, favicon=None):
         super().__init__()
         self.url = url
-        self.title = title
+        self.name = name
         self.icon = icon
 
         if favicon:
@@ -135,13 +135,13 @@ class FetcherWeb(base.Fetcher):
     def do_request(self, request):
         self.base_reply.remove_all()
         if request:
-            self.base_reply.append(items.ItemUri(title=self.title, detail=self.url.replace('%s', request), icon=self.icon))
+            self.base_reply.append(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
 
 
 class FetcherWebPrefix(base.FetcherPrefix):
-    def __init__(self, prefix, url, title, icon=None, favicon=None):
-        fetcher = FetcherWeb(url, title, icon)
-        super().__init__(fetcher, prefix, title, icon)
+    def __init__(self, prefix, url, name, icon=None, favicon=None):
+        fetcher = FetcherWeb(url, name, icon)
+        super().__init__(fetcher, prefix, name, icon)
         if favicon:
             asyncio.ensure_future(self.get_icon(favicon))
 
@@ -151,27 +151,27 @@ class FetcherWebPrefix(base.FetcherPrefix):
 
 class FetcherGoogle(FetcherWebPrefix):
     def __init__(self):
-        super().__init__(prefix='gg', url='https://www.google.com/search?q=%s', title=_("Google search"), favicon='https://www.google.com/favicon.ico')
+        super().__init__(prefix='gg', url='https://www.google.com/search?q=%s', name=_("Google search"), favicon='https://www.google.com/favicon.ico')
 
 
 class FetcherDebianPackage(FetcherWebPrefix):
     def __init__(self):
-        super().__init__(prefix='p', url='https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any', title=_("Debian package search"), icon='emblem-debian')
+        super().__init__(prefix='p', url='https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any', name=_("Debian package search"), icon='emblem-debian')
 
 
 class FetcherDebianFile(FetcherWebPrefix):
     def __init__(self):
-        super().__init__(prefix='f', url='https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any', title=_("Debian file search"), icon='emblem-debian')
+        super().__init__(prefix='f', url='https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any', name=_("Debian file search"), icon='emblem-debian')
 
 
 class FetcherDebianBugPackage(FetcherWebPrefix):
     def __init__(self):
-        super().__init__(prefix='p', url='https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s', title=_("Debian bugs by package"), icon='emblem-debian')
+        super().__init__(prefix='p', url='https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s', name=_("Debian bugs by package"), icon='emblem-debian')
 
 
 class FetcherDebianBugNumber(FetcherWebPrefix):
     def __init__(self):
-        super().__init__(prefix='n', url='https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s', title=_("Debian bug by number"), icon='emblem-debian')
+        super().__init__(prefix='n', url='https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s', name=_("Debian bug by number"), icon='emblem-debian')
 
 
 @base.chain(base.FetcherPrefix, 'b', _("Debian bugs"), 'emblem-debian')
@@ -201,5 +201,5 @@ class FetcherUrl(base.Fetcher):
             uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
         else:
             return
-        item = items.ItemUri(title=_("Open URL in browser"), detail=uri, icon='web-browser', score=1.0)
+        item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser', score=1.0)
         self.reply.append(item)

@@ -24,9 +24,9 @@ from gi.repository import Gtk
 
 
 class Item(GObject.Object):
-    def __init__(self, *, title, detail, icon=None, score=0.0):
+    def __init__(self, *, name, detail, icon=None, score=0.0):
         super().__init__()
-        self.title = title
+        self.name = name
         self.detail = detail
         self.icon = icon
         self.score = score
@@ -43,7 +43,7 @@ class Item(GObject.Object):
         return new_item
 
     def __repr__(self):
-        return f'Item({self.title} ({self.score}))'
+        return f'Item({self.name} ({self.score}))'
 
 
 class ItemUri(Item):
