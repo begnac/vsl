@@ -59,19 +59,20 @@ class FetcherLocate(base.Fetcher):
             if len(request) < 3:
                 self.reply.remove_all()
             else:
-                process = await asyncio.create_subprocess_exec('plocate', request, stdout=asyncio.subprocess.PIPE)
+                process = await asyncio.create_subprocess_exec('plocate', '-biN', request, stdout=asyncio.subprocess.PIPE)
                 filenames = await process.stdout.read()
                 self.reply.remove_all()
-                for name in filenames.decode().split('\n')[:-1]:
-                    content_type, encoding = mimetypes.guess_type(name)
-                    basename = os.path.basename(name)
+                for filename in filenames.decode().split('\n')[:-1]:
+                    content_type, encoding = mimetypes.guess_type(filename)
+                    basename = os.path.basename(filename)
                     if content_type is not None:
                         icon = Gio.content_type_get_icon(content_type)
                         name = _("{basename} ({description})").format(basename=basename, description=Gio.content_type_get_description(content_type))
                     else:
                         icon = None
                         name = basename
-                    item = items.ItemFile(name=name, detail=name, icon=icon)
+                    score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
+                    item = items.ItemFile(name=name, detail=filename, icon=icon, score=score)
                     self.reply.append(item)
         finally:
             self.future = None
