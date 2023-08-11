@@ -36,7 +36,7 @@ class ScoredItem(GObject.Object):
         return getattr(self.item, name)
 
 
-class Item:
+class ItemBase:
     def __init__(self, *, name, detail, title=None, icon=None):
         self.name = name
         self.detail = detail
@@ -44,7 +44,7 @@ class Item:
         self.icon = icon
 
     def activate(self):
-        pass
+        raise NotImplementedError
 
     def format_title(self):
         return self.title.format_map(vars(self))
@@ -53,21 +53,29 @@ class Item:
         return f'Item({self.format_title()})'
 
 
-class ItemUri(Item):
+class ItemChangeRequest(ItemBase):
+    "Special item type, will not need to activate."
+    def __init__(self, *, pattern, repl, **kwargs):
+        super().__init__(**kwargs)
+        self.pattern = pattern
+        self.repl = repl
+
+
+class ItemUri(ItemBase):
     def activate(self):
         Gtk.UriLauncher(uri=self.detail).launch(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.launch_finish(result))
 
 
-class ItemFile(Item):
+class ItemFile(ItemBase):
     def activate(self):
         Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.launch_finish(result))
 
 
-class ItemFolder(Item):
+class ItemFolder(ItemBase):
     def activate(self):
         Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).open_containing_folder(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.open_containing_folder_finish(result))
 
 
-class ItemAction(Item):
+class ItemAction(ItemBase):
     def activate(self):
         Gio.Application.get_default().activate_action(self.detail)

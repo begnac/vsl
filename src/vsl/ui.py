@@ -24,7 +24,10 @@ from gi.repository import GdkPixbuf
 from gi.repository import Gdk
 from gi.repository import Gtk
 
+import re
+
 from . import logger
+from . import items
 
 
 class HeaderBar(Gtk.HeaderBar):
@@ -102,23 +105,33 @@ class RequestBox(Gtk.Box):
         self.append(self.view)
 
         self.entry.connect('activate', self.activate_entry_cb, self.view)
-        self.view.connect('activate', self.activate_view_cb)
+        self.view.connect('activate', self.activate_view_cb, self.entry)
         self.selection.connect('items-changed', lambda model, position, removed, added: model.set_selected(0))
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
     @staticmethod
+    def activate_item(item, entry):
+        if isinstance(item, items.ItemChangeRequest):
+            old_request = entry.get_buffer().get_text()
+            new_request = re.sub(item.pattern, item.repl, old_request)
+            entry.get_buffer().set_text(new_request, -1)
+        else:
+            item.activate()
+        entry.grab_focus()
+
+    @staticmethod
     def activate_entry_cb(entry, view):
         model = view.get_model()
         for i in range(len(model)):
             if model.is_selected(i):
-                model[i].activate()
+                RequestBox.activate_item(model[i].item, entry)
                 break
 
     @staticmethod
-    def activate_view_cb(view, position):
-        view.get_model()[position].activate()
+    def activate_view_cb(view, position, entry):
+        RequestBox.activate_item(view.get_model()[position].item, entry)
 
 
 class CssProvider(Gtk.CssProvider):
@@ -151,7 +164,7 @@ class Window(Gtk.ApplicationWindow):
         self.headerbar = HeaderBar()
         self.request_box = RequestBox(fetcher.reply)
         app.bind_property('request', self.request_box.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
-        self.select_entry()
+        self.focus_request()
 
         super().__init__(titlebar=self.headerbar, child=self.request_box, application=app)
 
@@ -167,5 +180,5 @@ class Window(Gtk.ApplicationWindow):
     def items_changed_cb(self, model, position, removed, added):
         self.set_default_size(0, 0)
 
-    def select_entry(self):
-        self.request_box.entry.select_region(0, -1)
+    def focus_request(self):
+        self.request_box.entry.grab_focus()

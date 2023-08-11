@@ -169,10 +169,10 @@ class FetcherPrefix(FetcherBase):
                 self.prefix_fetcher.reply.remove_all()
                 self.score_fetcher.set_score_delta(0.0)
             self.fetcher.do_request(request)
-        elif request[1:] in (self.prefix, '?'):
+        elif request[1:] in (self.prefix, ''):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
-                item = items.Item(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon)
+                item = items.ItemChangeRequest(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, pattern='\.$', repl='.' + self.prefix)
                 self.prefix_fetcher.append_item(item, score=1.0)
                 self.fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):

@@ -145,7 +145,7 @@ class App(Gtk.Application):
         self.request = request
         win = self.get_active_window()
         if win:
-            win.select_entry()
+            win.focus_request()
 
     def close_window(self):
         win = self.get_active_window()
