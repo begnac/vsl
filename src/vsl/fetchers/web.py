@@ -67,17 +67,17 @@ class FirefoxInfo:
         finally:
             await db.close()
 
-    @classmethod
-    async def _DEBUG_find_favicon(cls, pattern):
-        db = await cls.db_in_profile('favicons')
-        try:
-            icons = await db.execute('SELECT icon_url '
-                                     'FROM moz_icons '
-                                     'WHERE icon_url LIKE ? ', (pattern,))
-            async for url, in icons:
-                print(url)
-        finally:
-            await db.close()
+    # @classmethod
+    # async def _DEBUG_find_favicon(cls, pattern):
+    #     db = await cls.db_in_profile('favicons')
+    #     try:
+    #         icons = await db.execute('SELECT icon_url '
+    #                                  'FROM moz_icons '
+    #                                  'WHERE icon_url LIKE ? ', (pattern,))
+    #         async for url, in icons:
+    #             print(url)
+    #     finally:
+    #         await db.close()
 
 
 @base.chain(base.FetcherPrefix, 'fb', _("Firefox bookmarks"), 'firefox')
@@ -190,7 +190,7 @@ class FetcherUrl(base.FetcherLeaf):
         self.reply.remove_all()
         result = urllib.parse.urlsplit(request)
         if result.scheme in ('http', 'https'):
-            uri = self.request
+            uri = request
         elif result.scheme == '' and '.' in result.path and all(result.path.split('.')) and result.path == request:
             uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
         else:

@@ -25,6 +25,7 @@ from gi.repository import Gdk
 from gi.repository import Gtk
 
 import re
+import weakref
 
 from . import logger
 from . import items
@@ -72,18 +73,19 @@ class Factory(Gtk.SignalListItemFactory):
         scored_item = listitem.get_item()
         item = scored_item.item
         box = listitem.get_child()
-        if item.icon is None:
-            pass
-        elif isinstance(item.icon, str):
-            box.icon.set_from_icon_name(item.icon)
-        elif isinstance(item.icon, Gio.Icon):
-            box.icon.set_from_gicon(item.icon)
-        elif isinstance(item.icon, GdkPixbuf.Pixbuf):
-            box.icon.set_from_pixbuf(item.icon)
-        else:
-            raise ValueError
         box.title.set_label(f'{item.format_title()} ({scored_item.score})')
         box.detail.set_label(item.detail)
+
+        if item.icon is None:
+            return
+        elif isinstance(item.icon, str):
+            icon = Gio.ThemedIcon(name=item.icon + '-symbolic')
+        elif isinstance(item.icon, Gio.ThemedIcon):
+            names = item.icon.get_names()
+            icon = Gio.ThemedIcon.new_from_names([name + '-symbolic' for name in names] + names)
+        else:
+            icon = item.icon
+        box.icon.set_from_gicon(icon)
 
     # @staticmethod
     # def unbind_cb(self, item):
@@ -102,15 +104,20 @@ class RequestBox(Gtk.Box):
         self.append(self.entry)
 
         self.selection = Gtk.SingleSelection(model=model)
-        self.view = Gtk.ListView(model=self.selection, factory=Factory())
+        self.view = Gtk.ListView(model=self.selection, factory=Factory(), tab_behavior=Gtk.ListTabBehavior.CELL)
         self.append(self.view)
 
         self.entry.connect('activate', self.activate_entry_cb, self.selection)
         self.view.connect('activate', self.activate_view_cb, self.entry)
-        self.selection.connect('items-changed', lambda model, position, removed, added: model.set_selected(0))
+        self.selection.connect('items-changed', self.items_changed_cb, weakref.ref(self.view))
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
+
+    @staticmethod
+    def items_changed_cb(model, position, removed, added, view):
+        if (view := view()) is not None:
+            view.scroll_to(0, Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT, None)
 
     @staticmethod
     def activate_item(item, entry):
@@ -118,9 +125,10 @@ class RequestBox(Gtk.Box):
             old_request = entry.get_buffer().get_text()
             new_request = re.sub(item.pattern, item.repl, old_request)
             entry.get_buffer().set_text(new_request, -1)
+            entry.grab_focus()
         else:
             item.activate()
-        entry.grab_focus()
+            Gio.Application.get_default().close_window()
 
     @staticmethod
     def activate_entry_cb(entry, model):
