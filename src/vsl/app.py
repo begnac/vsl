@@ -69,13 +69,12 @@ class App(Gtk.Application):
         super().__init__(application_id=f'begnac.{__application__}', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE | Gio.ApplicationFlags.ALLOW_REPLACEMENT)
 
         self.add_main_option('version', ord('V'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display version"), None)
-        self.add_main_option('copyright', ord('C'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Display copyright"), None)
         self.add_main_option('debug', ord('d'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Debug messages"), None)
         self.add_main_option('request', ord('r'), GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _("Request text"), None)
         self.add_main_option('clipboard', ord('c'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Request from clipboard"), None)
 
     def __del__(self):
-        logger.debug('Deleting {}'.format(self))
+        logger.debug(f'Deleting {self}')
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -108,9 +107,6 @@ class App(Gtk.Application):
     def do_handle_local_options(self, options):
         if options.contains('version'):
             print(_("{program} version {version}").format(program=__program_name__, version=__version__))
-            return 0
-
-        if options.contains('copyright'):
             print(__copyright__)
             print(__license_type__)
             return 0
