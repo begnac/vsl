@@ -35,8 +35,8 @@ from .. import items
 class FetcherActions(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
-        self.append_item(items.ItemAction(name=_("Quit"), detail='quit', icon='face-devilish'))
-        self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='face-devilish'))
+        self.append_item(items.ItemAction(name=_("Quit"), detail='quit', icon='application-exit'))
+        self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='window-close'))
 
 
 @base.chain(base.FetcherPrefix, 'lo', _("Locate files"), 'system-search')
