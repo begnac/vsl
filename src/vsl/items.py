@@ -37,6 +37,9 @@ class ScoredItem(GObject.Object):
     def apply_request(self, request):
         return self.apply_delta(self.item.score(request))
 
+    def __repr__(self):
+        return f'{self.item} ({self.score})'
+
 
 class ItemBase:
     def __init__(self, *, name, detail, title=None, icon=None):

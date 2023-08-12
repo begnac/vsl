@@ -25,11 +25,13 @@ from .. import items
 from .. import logger
 
 
-def chain(ChainClass, *cargs, **ckwargs):
+def chain(ChainClass, *cargs, debug=None, **ckwargs):
     def decorator(OldClass):
         class NewClass(ChainClass):
             def __init__(self, *args, **kwargs):
                 super().__init__(OldClass(*args, **kwargs), *cargs, **ckwargs)
+                if debug is not None:
+                    debug(self)
         NewClass.__name__ = f'{OldClass.__name__}->{ChainClass.__name__}'
         return NewClass
     return decorator
@@ -74,24 +76,25 @@ class FetcherTop(FetcherTransform):
 
 
 class FetcherMinScore(FetcherTransform):
-    def __init__(self, fetcher, *, score=0.2, **kwargs):
+    def __init__(self, fetcher, *, score=0.2):
         filter = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
-        super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter), **kwargs)
+        super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter))
 
 
 class FetcherNonEmpty(FetcherTransform):
     def __init__(self, fetcher):
         self.nonempty = False
-        super().__init__(fetcher=fetcher, reply=Gtk.SliceListModel(model=fetcher.reply, size=0))
+        filter = Gtk.CustomFilter.new(lambda item: False)
+        super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter))
 
     def do_request(self, request):
         if request:
             self.nonempty = True
             self.fetcher.do_request(request)
-            self.reply.set_size(len(self.fetcher.reply))
+            self.reply.set_filter(Gtk.CustomFilter.new(lambda item: True))
         elif self.nonempty:
             self.nonempty = False
-            self.reply.set_size(0)
+            self.reply.set_filter(Gtk.CustomFilter.new(lambda item: False))
 
 
 class FetcherChangeScore(FetcherTransform):

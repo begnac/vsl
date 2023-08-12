@@ -75,6 +75,10 @@ class FetcherLocate(base.FetcherLeaf):
                 if content_type is not None:
                     icon = Gio.content_type_get_icon(content_type)
                     title = _("{{name}} ({description})").format(description=Gio.content_type_get_description(content_type))
+                elif os.path.isdir(filename):
+                    icon = 'folder'
+                    filename += '/'
+                    title = None
                 else:
                     icon = None
                     title = None
