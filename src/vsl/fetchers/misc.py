@@ -31,7 +31,7 @@ from .. import items
 
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreName)
+@base.chain(base.FetcherScoreItems)
 class FetcherActions(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
@@ -42,7 +42,7 @@ class FetcherActions(base.FetcherLeaf):
 @base.chain(base.FetcherPrefix, 'lo', _("Locate files"), 'system-search')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreName)
+@base.chain(base.FetcherScoreItems)
 class FetcherLocate(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
@@ -62,7 +62,7 @@ class FetcherLocate(base.FetcherLeaf):
             return
 
         try:
-            process = await asyncio.create_subprocess_exec('plocate', '-biN', request, stdout=asyncio.subprocess.PIPE)
+            process = await asyncio.create_subprocess_exec('plocate', '-iNl', '50', request, stdout=asyncio.subprocess.PIPE)
             if future != self.future:
                 process.kill()
                 return
@@ -72,18 +72,19 @@ class FetcherLocate(base.FetcherLeaf):
             self.reply.remove_all()
             for filename in filenames.decode().split('\n')[:-1]:
                 content_type, encoding = mimetypes.guess_type(filename)
+                name = os.path.basename(filename)
                 if content_type is not None:
                     icon = Gio.content_type_get_icon(content_type)
                     title = _("{{name}} ({description})").format(description=Gio.content_type_get_description(content_type))
                 elif os.path.isdir(filename):
                     icon = 'folder'
-                    filename += '/'
+                    name += '/'
                     title = None
                 else:
                     icon = None
                     title = None
                 score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
-                item = items.ItemFile(name=os.path.basename(filename), detail=filename, title=title, icon=icon)
+                item = items.ItemFile(name=name, detail=filename, title=title, icon=icon)
                 self.append_item(item, score)
         finally:
             if self.future == future:
@@ -97,7 +98,7 @@ class ItemDesktop(items.ItemBase):
 
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreName)
+@base.chain(base.FetcherScoreItems)
 class _FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__()

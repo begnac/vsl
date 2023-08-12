@@ -54,13 +54,17 @@ class ItemBase:
     def format_title(self):
         return self.title.format_map(vars(self))
 
-    def score(self, request):
-        rlen = len(request)
-        if not rlen:
+    @staticmethod
+    def _score(request, something):
+        if not request or not something:
             return 0.0
-        opcodes = difflib.SequenceMatcher(None, request.lower(), self.name.lower()).get_opcodes()
-        d = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
-        return (1 - 2 * d / rlen) / len(opcodes)
+        opcodes = difflib.SequenceMatcher(None, request.lower(), something.lower()).get_opcodes()
+        d1 = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
+        d2 = sum(j2 - j1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'insert'))
+        return 1 - 2 * d1 / len(request) - d2 / len(something)
+
+    def score(self, request):
+        return self._score(request, self.name)
 
     def __repr__(self):
         return f'Item({self.format_title()})'
@@ -90,6 +94,9 @@ class ItemUri(ItemBase):
 class ItemFile(ItemBase):
     def activate(self):
         Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.launch_finish(result))
+
+    def score(self, request):
+        return (self._score(request, self.name) + self._score(request, self.detail)) / 2
 
 
 class ItemFolder(ItemBase):

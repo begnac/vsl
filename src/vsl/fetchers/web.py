@@ -83,7 +83,7 @@ class FirefoxInfo:
 @base.chain(base.FetcherPrefix, 'fb', _("Firefox bookmarks"), 'firefox')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreName)
+@base.chain(base.FetcherScoreItems)
 class FetcherFirefoxBookmarks(base.FetcherLeaf):
     def __init__(self):
         super().__init__()

@@ -105,7 +105,7 @@ class FetcherChangeScore(FetcherTransform):
         self.reply.set_map_func(lambda i: i.apply_delta(delta))
 
 
-class FetcherScoreName(FetcherTransform):
+class FetcherScoreItems(FetcherTransform):
     def __init__(self, fetcher):
         super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
 
