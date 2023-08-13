@@ -88,12 +88,12 @@ class ItemNoop(ItemBase):
 
 class ItemUri(ItemBase):
     def activate(self):
-        Gtk.UriLauncher(uri=self.detail).launch(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.launch_finish(result))
+        Gtk.UriLauncher(uri=self.detail).launch(None, None, lambda launcher, result: launcher.launch_finish(result))
 
 
 class ItemFile(ItemBase):
     def activate(self):
-        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.launch_finish(result))
+        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(None, None, lambda launcher, result: launcher.launch_finish(result))
 
     def score(self, request):
         return (self._score(request, self.name) + self._score(request, self.detail)) / 2
@@ -101,7 +101,7 @@ class ItemFile(ItemBase):
 
 class ItemFolder(ItemBase):
     def activate(self):
-        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).open_containing_folder(Gio.Application.get_default().get_active_window(), None, lambda launcher, result: launcher.open_containing_folder_finish(result))
+        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).open_containing_folder(None, None, lambda launcher, result: launcher.open_containing_folder_finish(result))
 
 
 class ItemAction(ItemBase):
