@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from gi.repository import GLib
 from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import Gtk
@@ -86,22 +87,26 @@ class ItemNoop(ItemBase):
         return 0.2
 
 
-class ItemUri(ItemBase):
-    def activate(self):
-        Gtk.UriLauncher(uri=self.detail).launch(None, None, lambda launcher, result: launcher.launch_finish(result))
+class ItemLauncher(ItemBase):
+    @staticmethod
+    def async_callback(launcher, result):
+        try:
+            launcher.launch_finish(result)
+        except GLib.GError as e:
+            print(e)
 
 
-class ItemFile(ItemBase):
+class ItemUri(ItemLauncher):
     def activate(self):
-        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(None, None, lambda launcher, result: launcher.launch_finish(result))
+        Gtk.UriLauncher(uri=self.detail).launch(None, None, self.async_callback)
+
+
+class ItemFile(ItemLauncher):
+    def activate(self):
+        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(None, None, self.async_callback)
 
     def score(self, request):
         return (self._score(request, self.name) + self._score(request, self.detail)) / 2
-
-
-class ItemFolder(ItemBase):
-    def activate(self):
-        Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).open_containing_folder(None, None, lambda launcher, result: launcher.open_containing_folder_finish(result))
 
 
 class ItemAction(ItemBase):
