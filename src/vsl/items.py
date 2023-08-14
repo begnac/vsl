@@ -62,7 +62,7 @@ class ItemBase:
         opcodes = difflib.SequenceMatcher(None, request.lower(), something.lower()).get_opcodes()
         d1 = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
         d2 = sum(j2 - j1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'insert'))
-        return 1 - 2 * d1 / len(request) - d2 / len(something)
+        return 1 - d1 / len(request) - d2 / len(something) / 5
 
     def score(self, request):
         return self._score(request, self.name)
