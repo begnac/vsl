@@ -65,7 +65,7 @@ class ItemBase:
         return 1 - d1 / len(request) - d2 / len(something) / 5
 
     def score(self, request):
-        return self._score(request, self.name)
+        return (2 * self._score(request, self.name) + self._score(request, self.detail)) / 3
 
     def __repr__(self):
         return f'Item({self.format_title()})'
@@ -104,9 +104,6 @@ class ItemUri(ItemLauncher):
 class ItemFile(ItemLauncher):
     def activate(self):
         Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(None, None, self.async_callback)
-
-    def score(self, request):
-        return (self._score(request, self.name) + self._score(request, self.detail)) / 2
 
 
 class ItemAction(ItemBase):

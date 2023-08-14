@@ -84,7 +84,7 @@ class FetcherLocate(base.FetcherLeaf):
                 else:
                     icon = None
                     title = None
-                score = 0.1 if filename.startswith(os.path.expanduser('~/')) else 0.0
+                score = 0.0 if filename.startswith(os.path.expanduser('~/')) else -0.1
                 item = items.ItemFile(name=name, detail=filename, title=title, icon=icon)
                 self.append_item(item, score)
         finally:
