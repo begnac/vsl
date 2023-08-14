@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Very Simple Launcher
+Comment=A simple Python/Gtk4 application launcher
+Comment[fr]=Un simple lanceur d'applications en Python/Gtk4
+Icon=system-search
+DBusActivatable=true
+TryExec=/usr/bin/vsl
+Exec=/usr/bin/vsl
+Terminal=false
+Categories=Utility
+StartupWMClass=VSL
+SingleMainWindow=true
