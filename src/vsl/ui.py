@@ -108,15 +108,9 @@ class RequestBox(Gtk.Box):
 
         self.entry.connect('activate', self.activate_entry_cb, self.selection)
         self.view.connect('activate', self.activate_view_cb, self.entry)
-        self.selection.connect('items-changed', self.items_changed_cb, weakref.ref(self.view))
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
-
-    @staticmethod
-    def items_changed_cb(model, position, removed, added, view):
-        if (view := view()) is not None:
-            view.scroll_to(0, Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT, None)
 
     @staticmethod
     def activate_item(item, entry):
@@ -165,11 +159,10 @@ class CssProvider(Gtk.CssProvider):
 
 class Window(Gtk.ApplicationWindow):
     def __init__(self, app, fetcher):
-        self.fetcher = fetcher
-        fetcher.reply.connect('items-changed', self.items_changed_cb)
-
         self.headerbar = HeaderBar()
         self.request_box = RequestBox(fetcher.reply)
+        self.request_box.selection.connect('items-changed', self.items_changed_cb, weakref.ref(self))
+
         app.bind_property('request', self.request_box.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
         self.focus_request()
 
@@ -180,12 +173,11 @@ class Window(Gtk.ApplicationWindow):
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    def destroy(self):
-        self.fetcher.reply.disconnect_by_func(self.items_changed_cb)
-        super().destroy()
-
-    def items_changed_cb(self, model, position, removed, added):
+    @staticmethod
+    def items_changed_cb(model, position, removed, added, self):
+        self = self()
         self.set_default_size(0, 0)
+        self.request_box.view.scroll_to(0, Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT, None)
 
     def focus_request(self):
         self.request_box.entry.grab_focus()
