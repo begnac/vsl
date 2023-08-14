@@ -188,9 +188,11 @@ class FetcherUrl(base.FetcherLeaf):
         result = urllib.parse.urlsplit(request)
         if result.scheme in ('http', 'https'):
             uri = request
+            score = 1.0
         elif result.scheme == '' and '.' in result.path and all(result.path.split('.')) and result.path == request:
             uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
+            score = 0.9
         else:
             return
         item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser')
-        self.append_item(item, 0.3)
+        self.append_item(item, score)
