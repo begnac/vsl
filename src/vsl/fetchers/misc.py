@@ -39,7 +39,7 @@ class FetcherActions(base.FetcherLeaf):
         self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='window-close'))
 
 
-@base.chain(base.FetcherPrefix, 'lo', _("Locate files"), dig=4)
+@base.chain(base.FetcherPrefix, 'lo', _("Locate files"))
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
