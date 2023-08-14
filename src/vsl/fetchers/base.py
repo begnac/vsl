@@ -135,11 +135,20 @@ class FetcherPrefix(FetcherBase):
     PREFIX_EXACT = 2
     PREFIX_OK = 3
 
-    def __init__(self, fetcher, prefix, name, icon=None):
+    def __init__(self, fetcher, prefix, name=None, icon=None, *, dig=0):
         self.fetcher = fetcher
         self.prefix = prefix
-        self.name = name
-        self.icon = icon
+
+        self.name = lambda: name
+        self.icon = lambda: icon
+        if dig:
+            subfetcher = self
+            for i in range(dig):
+                subfetcher = subfetcher.fetcher
+            if name is None:
+                self.name = lambda: subfetcher.name
+            if icon is None:
+                self.icon = lambda: subfetcher.icon
 
         self.score_fetcher = FetcherChangeScore(fetcher)
         self.nonempty_fetcher = FetcherNonEmpty(self.score_fetcher)
@@ -163,7 +172,7 @@ class FetcherPrefix(FetcherBase):
         elif request[1:] in (self.prefix, ''):
             if self.prefix_status != self.PREFIX_EXACT:
                 self.prefix_status = self.PREFIX_EXACT
-                item = items.ItemChangeRequest(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, pattern='\\.$', repl='.' + self.prefix)
+                item = items.ItemChangeRequest(name=self.name(), detail=f"Prefix is « {self.prefix} »", icon=self.icon(), pattern='\\.$', repl='.' + self.prefix)
                 self.prefix_fetcher.append_item(item, score=1.0)
                 self.nonempty_fetcher.do_request('')
         elif not request[1:].startswith(self.prefix):

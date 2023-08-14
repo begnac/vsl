@@ -28,6 +28,7 @@ from . import base
 from .. import items
 
 
+@base.chain(base.FetcherPrefix, 'vsl', _("VSL actions"), icon='face-devilish')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
@@ -38,7 +39,7 @@ class FetcherActions(base.FetcherLeaf):
         self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='window-close'))
 
 
-@base.chain(base.FetcherPrefix, 'lo', _("Locate files"), 'system-search')
+@base.chain(base.FetcherPrefix, 'lo', _("Locate files"), dig=4)
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
@@ -46,11 +47,12 @@ class FetcherLocate(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
         self.future = None
+        self.icon = 'system-search'
 
     def do_request(self, request):
         if len(request) < 3:
             self.reply.remove_all()
-            self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon='system-search'), 0.2)
+            self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon=self.icon), 0.2)
             self.future = None
         else:
             self.future = asyncio.ensure_future(self.async_do_request(request))

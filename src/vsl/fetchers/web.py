@@ -132,43 +132,40 @@ class FetcherWeb(base.FetcherLeaf):
         self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
 
 
-class FetcherWebPrefix(base.FetcherPrefix):
-    def __init__(self, prefix, url, name, icon=None, favicon=None):
-        fetcher = FetcherWeb(url, name, icon)
-        super().__init__(fetcher, prefix, name, icon)
-        if favicon:
-            asyncio.ensure_future(self.get_icon(favicon))
-
-    async def get_icon(self, favicon):
-        self.icon = self.fetcher.icon = await FirefoxInfo.get_favicon(favicon)
-
-
-class FetcherGoogle(FetcherWebPrefix):
+@base.chain(base.FetcherPrefix, 'gg', dig=1)
+class FetcherGoogle(FetcherWeb):
     def __init__(self):
-        super().__init__(prefix='gg', url='https://www.google.com/search?q=%s', name=_("Google search"), favicon='https://www.google.com/favicon.ico')
+        super().__init__(url='https://www.google.com/search?q=%s', name=_("Google search"), favicon='https://www.google.com/favicon.ico')
 
 
-class FetcherDebianPackage(FetcherWebPrefix):
+ICON_DEBIAN = 'emblem-debian'
+
+
+@base.chain(base.FetcherPrefix, 'p', dig=1)
+class FetcherDebianPackage(FetcherWeb):
     def __init__(self):
-        super().__init__(prefix='p', url='https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any', name=_("Debian package search"), icon='emblem-debian')
+        super().__init__(url='https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any', name=_("Debian package search"), icon=ICON_DEBIAN)
 
 
-class FetcherDebianFile(FetcherWebPrefix):
+@base.chain(base.FetcherPrefix, 'f', dig=1)
+class FetcherDebianFile(FetcherWeb):
     def __init__(self):
-        super().__init__(prefix='f', url='https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any', name=_("Debian file search"), icon='emblem-debian')
+        super().__init__(url='https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any', name=_("Debian file search"), icon=ICON_DEBIAN)
 
 
-class FetcherDebianBugPackage(FetcherWebPrefix):
+@base.chain(base.FetcherPrefix, 'p', dig=1)
+class FetcherDebianBugPackage(FetcherWeb):
     def __init__(self):
-        super().__init__(prefix='p', url='https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s', name=_("Debian bugs by package"), icon='emblem-debian')
+        super().__init__(url='https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s', name=_("Debian bugs by package"), icon=ICON_DEBIAN)
 
 
-class FetcherDebianBugNumber(FetcherWebPrefix):
+@base.chain(base.FetcherPrefix, 'n', dig=1)
+class FetcherDebianBugNumber(FetcherWeb):
     def __init__(self):
-        super().__init__(prefix='n', url='https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s', name=_("Debian bug by number"), icon='emblem-debian')
+        super().__init__(url='https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s', name=_("Debian bug by number"), icon=ICON_DEBIAN)
 
 
-@base.chain(base.FetcherPrefix, 'b', _("Debian bugs"), 'emblem-debian')
+@base.chain(base.FetcherPrefix, 'b', _("Debian bugs"), ICON_DEBIAN)
 class FetcherDebianBugs(base.FetcherMux):
     classes = [
         FetcherDebianBugPackage,
@@ -176,7 +173,7 @@ class FetcherDebianBugs(base.FetcherMux):
     ]
 
 
-@base.chain(base.FetcherPrefix, 'd', _("Debian searches"), 'emblem-debian')
+@base.chain(base.FetcherPrefix, 'd', _("Debian searches"), ICON_DEBIAN)
 class FetcherDebian(base.FetcherMux):
     classes = [
         FetcherDebianPackage,
