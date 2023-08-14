@@ -70,7 +70,7 @@ class FetcherTransform(FetcherBase):
 
 class FetcherTop(FetcherTransform):
     def __init__(self, fetcher, *, size=10):
-        sorter = Gtk.CustomSorter.new(lambda item1, item2, none: Gtk.Ordering.EQUAL if item1 is item2 else Gtk.Ordering.SMALLER if item1.score > item2.score else Gtk.Ordering.LARGER)
+        sorter = Gtk.CustomSorter.new(lambda item1, item2, none: Gtk.Ordering.SMALLER if item1.score > item2.score else Gtk.Ordering.LARGER if item1.score < item2.score else Gtk.Ordering.EQUAL)
         reply = Gtk.SliceListModel(model=Gtk.SortListModel(model=fetcher.reply, sorter=sorter), size=size)
         super().__init__(fetcher=fetcher, reply=reply)
 
