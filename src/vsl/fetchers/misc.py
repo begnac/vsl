@@ -25,7 +25,6 @@ import os
 import mimetypes
 
 from . import base
-from . import web
 from .. import items
 
 
@@ -96,22 +95,13 @@ class ItemDesktop(items.ItemBase):
         Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
 
 
+@base.chain(base.FetcherPrefix, 'a', _("Applications"), 'applications-utilities')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
-class _FetcherLaunchApp(base.FetcherLeaf):
+class FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__()
         for appinfo in Gio.app_info_get_all():
             item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("Run application: {name}"), icon=appinfo.get_icon())
             self.append_item(item)
-
-
-class FetcherLaunchApp(base.FetcherPrefix):
-    def __init__(self):
-        fetcher = _FetcherLaunchApp()
-        super().__init__(fetcher, 'a', _("Applications"))
-        asyncio.ensure_future(self.get_icon())
-
-    async def get_icon(self):
-        self.icon = await web.FirefoxInfo.get_favicon('https://specifications.freedesktop.org/favicon.ico')
