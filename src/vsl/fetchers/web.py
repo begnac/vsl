@@ -129,7 +129,7 @@ class FetcherWeb(base.FetcherLeaf):
 
     def do_request(self, request):
         self.reply.remove_all()
-        self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon))
+        self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon), score=0.5)
 
 
 @base.chain(base.FetcherPrefix, 'gg', dig=1)
