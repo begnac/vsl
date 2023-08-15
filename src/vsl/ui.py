@@ -119,6 +119,7 @@ class RequestBox(Gtk.Box):
             new_request = re.sub(item.pattern, item.repl, old_request)
             entry.get_buffer().set_text(new_request, -1)
             entry.grab_focus()
+            entry.get_first_child().emit('move-cursor', Gtk.MovementStep.BUFFER_ENDS, 1, False)
         else:
             item.activate()
             Gio.Application.get_default().close_window()
