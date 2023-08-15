@@ -139,10 +139,14 @@ class FetcherUrl(base.FetcherLeaf):
         if result.scheme in ('http', 'https'):
             uri = request
             score = 1.0
-        elif result.scheme == '' and '.' in result.path and all(result.path.split('.')) and result.path == request:
-            uri = urllib.parse.urlunsplit(('https', request, '', '', ''))
-            score = 0.9
-        else:
+        elif result.scheme != '':
             return
+        else:
+            uri = 'https://' + request
+            result = urllib.parse.urlsplit(uri)
+            if '.' in result.netloc and all(result.netloc.split('.')) and result.netloc == request:
+                score = 0.9
+            else:
+                return
         item = items.ItemUri(name=self.name, detail=uri, icon=self.icon)
         self.append_item(item, score)
