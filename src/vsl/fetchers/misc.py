@@ -28,26 +28,23 @@ from . import base
 from .. import items
 
 
-@base.chain(base.FetcherPrefix, 'vsl', _("VSL actions"), icon='face-devilish')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
 class FetcherActions(base.FetcherLeaf):
     def __init__(self):
-        super().__init__()
+        super().__init__(_("VSL actions"), icon='face-devilish')
         self.append_item(items.ItemAction(name=_("Quit"), detail='quit', icon='application-exit'))
         self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='window-close'))
 
 
-@base.chain(base.FetcherPrefix, 'lo', _("Locate files"))
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
 class FetcherLocate(base.FetcherLeaf):
     def __init__(self):
-        super().__init__()
+        super().__init__(_("Locate files"), 'system-search')
         self.future = None
-        self.icon = 'system-search'
 
     def do_request(self, request):
         if len(request) < 3:
@@ -97,13 +94,12 @@ class ItemDesktop(items.ItemBase):
         Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
 
 
-@base.chain(base.FetcherPrefix, 'a', _("Applications"), 'applications-utilities')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
 class FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
-        super().__init__()
+        super().__init__(_("Applications"), 'applications-utilities')
         for appinfo in Gio.app_info_get_all():
             item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("Run application: {name}"), icon=appinfo.get_icon())
             self.append_item(item)

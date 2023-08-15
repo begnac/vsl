@@ -80,7 +80,6 @@ class FirefoxInfo:
     #         await db.close()
 
 
-@base.chain(base.FetcherPrefix, 'fb')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
@@ -114,12 +113,10 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
         await db1.close()
 
 
-class FetcherWeb(base.FetcherLeaf):
+class FetcherWebSearch(base.FetcherLeaf):
     def __init__(self, url, name, icon=None, favicon=None):
-        super().__init__()
+        super().__init__(name, icon)
         self.url = url
-        self.name = name
-        self.icon = icon
 
         if favicon:
             asyncio.ensure_future(self.get_icon(favicon))
@@ -132,57 +129,10 @@ class FetcherWeb(base.FetcherLeaf):
         self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon), score=0.5)
 
 
-@base.chain(base.FetcherPrefix, 'gg')
-class FetcherGoogle(FetcherWeb):
-    def __init__(self):
-        super().__init__(url='https://www.google.com/search?q=%s', name=_("Google search"), favicon='https://www.google.com/favicon.ico')
-
-
-ICON_DEBIAN = 'emblem-debian'
-
-
-@base.chain(base.FetcherPrefix, 'p')
-class FetcherDebianPackage(FetcherWeb):
-    def __init__(self):
-        super().__init__(url='https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any', name=_("Debian package search"), icon=ICON_DEBIAN)
-
-
-@base.chain(base.FetcherPrefix, 'f')
-class FetcherDebianFile(FetcherWeb):
-    def __init__(self):
-        super().__init__(url='https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any', name=_("Debian file search"), icon=ICON_DEBIAN)
-
-
-@base.chain(base.FetcherPrefix, 'p')
-class FetcherDebianBugPackage(FetcherWeb):
-    def __init__(self):
-        super().__init__(url='https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s', name=_("Debian bugs by package"), icon=ICON_DEBIAN)
-
-
-@base.chain(base.FetcherPrefix, 'n')
-class FetcherDebianBugNumber(FetcherWeb):
-    def __init__(self):
-        super().__init__(url='https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s', name=_("Debian bug by number"), icon=ICON_DEBIAN)
-
-
-@base.chain(base.FetcherPrefix, 'b', _("Debian bugs"), ICON_DEBIAN)
-class FetcherDebianBugs(base.FetcherMux):
-    classes = [
-        FetcherDebianBugPackage,
-        FetcherDebianBugNumber,
-    ]
-
-
-@base.chain(base.FetcherPrefix, 'd', _("Debian searches"), ICON_DEBIAN)
-class FetcherDebian(base.FetcherMux):
-    classes = [
-        FetcherDebianPackage,
-        FetcherDebianFile,
-        FetcherDebianBugs,
-    ]
-
-
 class FetcherUrl(base.FetcherLeaf):
+    def __init__(self):
+        super().__init__(_("Open URL in browser"), 'web-browser')
+
     def do_request(self, request):
         self.reply.remove_all()
         result = urllib.parse.urlsplit(request)
@@ -194,5 +144,5 @@ class FetcherUrl(base.FetcherLeaf):
             score = 0.9
         else:
             return
-        item = items.ItemUri(name=_("Open URL in browser"), detail=uri, icon='web-browser')
+        item = items.ItemUri(name=self.name, detail=uri, icon=self.icon)
         self.append_item(item, score)

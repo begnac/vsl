@@ -31,7 +31,7 @@ import gasyncio
 
 from . import __application__, __program_name__, __version__, __copyright__, __license_type__
 from . import ui
-from . import root
+from . import tree
 from . import logger
 
 
@@ -88,7 +88,7 @@ class App(Gtk.Application):
         for action in self.actions:
             action.add_to_app(self)
 
-        self.root_fetcher = root.FetcherRoot()
+        self.root_fetcher = tree.Root()
         self.connect('notify::request', lambda self_, param: self_.root_fetcher.do_request(self_.request))
 
         self.hold()

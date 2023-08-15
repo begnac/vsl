@@ -38,7 +38,7 @@ def chain(ChainClass, *cargs, debug=None, **ckwargs):
 
 
 class FetcherBase:
-    def __init__(self, *, reply):
+    def __init__(self, reply):
         self.reply = reply
 
     def __del__(self):
@@ -48,11 +48,16 @@ class FetcherBase:
         raise NotImplementedError
 
 
-class FetcherLeaf(FetcherBase):
-    def __init__(self, name=None, icon=None):
-        super().__init__(reply=Gio.ListStore(item_type=items.ScoredItem))
+class FetcherSource(FetcherBase):
+    def __init__(self, name, icon, reply):
+        super().__init__(reply=reply)
         self.name = name
         self.icon = icon
+
+
+class FetcherLeaf(FetcherSource):
+    def __init__(self, name=None, icon=None):
+        super().__init__(name, icon, Gio.ListStore(item_type=items.ScoredItem))
 
     def do_request(self, request):
         pass
@@ -61,43 +66,54 @@ class FetcherLeaf(FetcherBase):
         self.reply.append(items.ScoredItem(item, score))
 
 
+class FetcherMux(FetcherSource):
+    def __init__(self, name, icon, fetchers):
+        self.fetchers = list(fetchers)
+        replies = Gio.ListStore(item_type=Gio.ListModel)
+        for fetcher in self.fetchers:
+            replies.append(fetcher.reply)
+        super().__init__(name, icon, Gtk.FlattenListModel(model=replies))
+
+    def do_request(self, request):
+        for fetcher in self.fetchers:
+            fetcher.do_request(request)
+
+
 class FetcherPipe(FetcherBase):
-    def __init__(self, *, fetcher, reply, name=None, icon=None):
+    def __init__(self, fetcher, reply):
         self.fetcher = fetcher
-        self._name = name
-        self._icon = icon
-        super().__init__(reply=reply)
+        super().__init__(reply)
 
     @property
     def name(self):
-        return self._name or self.fetcher.name
+        return self.fetcher.name
 
     @property
     def icon(self):
-        return self._icon or self.fetcher.icon
+        return self.fetcher.icon
 
     def do_request(self, request):
         self.fetcher.do_request(request)
 
 
 class FetcherTop(FetcherPipe):
-    def __init__(self, fetcher, *, size=10):
+    def __init__(self, fetcher, size=10):
         sorter = Gtk.CustomSorter.new(lambda item1, item2, none: Gtk.Ordering.SMALLER if item1.score > item2.score else Gtk.Ordering.LARGER if item1.score < item2.score else Gtk.Ordering.EQUAL)
         reply = Gtk.SliceListModel(model=Gtk.SortListModel(model=fetcher.reply, sorter=sorter), size=size)
-        super().__init__(fetcher=fetcher, reply=reply)
+        super().__init__(fetcher, reply)
 
 
 class FetcherMinScore(FetcherPipe):
     def __init__(self, fetcher, *, score=0.2):
         filter = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
-        super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter))
+        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter))
 
 
 class FetcherNonEmpty(FetcherPipe):
     def __init__(self, fetcher):
         self.nonempty = False
         filter = Gtk.CustomFilter.new(lambda item: False)
-        super().__init__(fetcher=fetcher, reply=Gtk.FilterListModel(model=fetcher.reply, filter=filter))
+        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter))
 
     def do_request(self, request):
         if request:
@@ -111,7 +127,7 @@ class FetcherNonEmpty(FetcherPipe):
 
 class FetcherChangeScore(FetcherPipe):
     def __init__(self, fetcher):
-        super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
+        super().__init__(fetcher, Gtk.MapListModel(model=fetcher.reply))
 
     def set_score_delta(self, delta):
         self.reply.set_map_func(lambda i: i.apply_delta(delta))
@@ -119,26 +135,11 @@ class FetcherChangeScore(FetcherPipe):
 
 class FetcherScoreItems(FetcherPipe):
     def __init__(self, fetcher):
-        super().__init__(fetcher=fetcher, reply=Gtk.MapListModel(model=fetcher.reply))
+        super().__init__(fetcher, Gtk.MapListModel(model=fetcher.reply))
 
     def do_request(self, request):
         self.reply.set_map_func(lambda i, r: i.apply_request(r), request)
         super().do_request(request)
-
-
-class FetcherMux(FetcherBase):
-    def __init__(self):
-        self.fetchers = []
-        replies = Gio.ListStore(item_type=Gio.ListModel)
-        for fetcher_class in self.classes:
-            fetcher = fetcher_class()
-            self.fetchers.append(fetcher)
-            replies.append(fetcher.reply)
-        super().__init__(reply=Gtk.FlattenListModel(model=replies))
-
-    def do_request(self, request):
-        for fetcher in self.fetchers:
-            fetcher.do_request(request)
 
 
 class FetcherPrefix(FetcherPipe):
@@ -147,11 +148,11 @@ class FetcherPrefix(FetcherPipe):
     PREFIX_EXACT = 2
     PREFIX_OK = 3
 
-    def __init__(self, fetcher, prefix, name=None, icon=None):
+    def __init__(self, fetcher, prefix):
         self.prefix = prefix
 
         replies = Gio.ListStore(item_type=Gio.ListModel)
-        super().__init__(fetcher=fetcher, reply=Gtk.FlattenListModel(model=replies), name=name, icon=icon)
+        super().__init__(fetcher, Gtk.FlattenListModel(model=replies))
 
         self.score_fetcher = FetcherChangeScore(fetcher)
         self.nonempty_fetcher = FetcherNonEmpty(self.score_fetcher)
