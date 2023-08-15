@@ -80,13 +80,13 @@ class FirefoxInfo:
     #         await db.close()
 
 
-@base.chain(base.FetcherPrefix, 'fb', _("Firefox bookmarks"), 'firefox')
+@base.chain(base.FetcherPrefix, 'fb')
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
 class FetcherFirefoxBookmarks(base.FetcherLeaf):
     def __init__(self):
-        super().__init__()
+        super().__init__(_("Firefox bookmarks"), 'firefox')
         asyncio.ensure_future(self.setup())
 
     async def setup(self):
