@@ -56,14 +56,19 @@ class Factory(Gtk.SignalListItemFactory):
     def setup_cb(self, listitem):
         box = Gtk.Box(css_name='item-box')
         box.icon = Gtk.Image(icon_size=Gtk.IconSize.LARGE)
-        box2 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
         box.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-title'])
         box.detail = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-detail'])
+        box.score = Gtk.Label(halign=Gtk.Align.END, css_classes=['item-detail'])
+        box2 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+        box3 = Gtk.Box()
 
         box.append(box.icon)
         box.append(box2)
         box2.append(box.title)
-        box2.append(box.detail)
+        box2.append(box3)
+        box3.append(box.detail)
+        box3.append(Gtk.Label(label=" ", hexpand=True))
+        box3.append(box.score)
 
         listitem.set_child(box)
 
@@ -72,8 +77,9 @@ class Factory(Gtk.SignalListItemFactory):
         scored_item = listitem.get_item()
         item = scored_item.item
         box = listitem.get_child()
-        box.title.set_label(f'{item.format_title()} ({scored_item.score})')
+        box.title.set_label(item.format_title())
         box.detail.set_label(item.detail)
+        box.score.set_label(f"({scored_item.score})")
 
         if item.icon is None:
             return
