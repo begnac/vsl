@@ -134,8 +134,9 @@ class FetcherScoreItems(FetcherPipe):
         super().__init__(fetcher, Gtk.MapListModel(model=fetcher.reply))
 
     def do_request(self, request):
-        self.reply.set_map_func(lambda i, r: i.apply_request(r), request)
+        self.reply.set_map_func(None)
         super().do_request(request)
+        self.reply.set_map_func(lambda i, r: i.apply_request(r), request)
 
 
 class FetcherPrefix(FetcherPipe):
