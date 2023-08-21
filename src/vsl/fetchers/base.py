@@ -25,15 +25,11 @@ from .. import items
 from .. import logger
 
 
-def chain(ChainClass, *cargs, debug=None, **ckwargs):
+def chain(ChainClass, *cargs, **ckwargs):
     def decorator(OldClass):
-        class NewClass(ChainClass):
-            def __init__(self, *args, **kwargs):
-                super().__init__(OldClass(*args, **kwargs), *cargs, **ckwargs)
-                if debug is not None:
-                    debug(self)
-        NewClass.__name__ = f'{OldClass.__name__}->{ChainClass.__name__}'
-        return NewClass
+        def init(self, *args, **kwargs):
+            ChainClass.__init__(self, OldClass(*args, **kwargs), *cargs, **ckwargs)
+        return type(f'{OldClass.__name__}->{ChainClass.__name__}', (ChainClass,), dict(__init__=init))
     return decorator
 
 
