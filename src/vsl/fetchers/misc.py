@@ -73,7 +73,7 @@ class FetcherLocate(base.FetcherLeaf):
                 name = os.path.basename(filename)
                 if content_type is not None:
                     icon = Gio.content_type_get_icon(content_type)
-                    title = _("{{name}} ({description})").format(description=Gio.content_type_get_description(content_type))
+                    title = _("{{name}} [{description}]").format(description=Gio.content_type_get_description(content_type))
                 elif os.path.isdir(filename):
                     icon = 'folder'
                     name += '/'
@@ -101,5 +101,5 @@ class FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Applications"), 'applications-utilities')
         for appinfo in Gio.app_info_get_all():
-            item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("Run application: {name}"), icon=appinfo.get_icon())
+            item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("{name} [application]"), icon=appinfo.get_icon())
             self.append_item(item)

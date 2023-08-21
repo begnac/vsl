@@ -108,7 +108,7 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
                 break
             else:
                 icon = 'firefox'
-            self.append_item(items.ItemUri(name=title, detail=url, title=_("Open bookmark: {name}"), icon=icon))
+            self.append_item(items.ItemUri(name=title, detail=url, title=_("{name} [Firefox]"), icon=icon))
         await db2.close()
         await db1.close()
 
