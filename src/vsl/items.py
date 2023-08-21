@@ -72,7 +72,7 @@ class ItemBase:
         N2 = 1
         score_sensitive = (N1 * self._score(request, self.name) + (N2 * self._score(request, self.detail))) / (N1 + N2)
         score_insensitive = (N1 * self._score(request.lower(), self.name.lower()) + (N2 * self._score(request.lower(), self.detail.lower()))) / (N1 + N2)
-        return (score_sensitive + score_insensitive) / 2
+        return (score_sensitive + score_insensitive * 3) / 4
 
     def __repr__(self):
         return f'Item({self.format_title()})'
