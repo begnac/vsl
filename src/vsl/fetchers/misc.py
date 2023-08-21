@@ -47,8 +47,8 @@ class FetcherLocate(base.FetcherLeaf):
         self.future = None
 
     def do_request(self, request):
+        self.reply.remove_all()
         if len(request) < 3:
-            self.reply.remove_all()
             self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon=self.icon), 0.2)
             self.future = None
         else:
@@ -59,16 +59,22 @@ class FetcherLocate(base.FetcherLeaf):
         if future != self.future:
             return
 
-        try:
-            process = await asyncio.create_subprocess_exec('plocate', '-iNl', '50', request, stdout=asyncio.subprocess.PIPE)
+        process = None
+        process = await asyncio.create_subprocess_exec('plocate', '-iN', request, stdout=asyncio.subprocess.PIPE)
+        if future != self.future:
+            return
+
+        data = b''
+        while True:
+            new_data = await process.stdout.read(1024)
             if future != self.future:
-                process.kill()
                 return
-            filenames = await process.stdout.read()
-            if future != self.future:
+            elif not new_data:
+                self.future = None
                 return
-            self.reply.remove_all()
-            for filename in filenames.decode().split('\n')[:-1]:
+            *filenames, data = (data + new_data).split(b'\n')
+            for filename in filenames:
+                filename = filename.decode()
                 content_type, encoding = mimetypes.guess_type(filename)
                 name = os.path.basename(filename)
                 if content_type is not None:
@@ -84,9 +90,6 @@ class FetcherLocate(base.FetcherLeaf):
                 score = 0.0 if filename.startswith(os.path.expanduser('~/')) else -0.1
                 item = items.ItemFile(name=name, detail=filename, title=title, icon=icon)
                 self.append_item(item, score)
-        finally:
-            if self.future == future:
-                self.future = None
 
 
 class ItemDesktop(items.ItemBase):
