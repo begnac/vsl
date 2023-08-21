@@ -59,13 +59,20 @@ class ItemBase:
     def _score(request, something):
         if not request or not something:
             return 0.0
-        opcodes = difflib.SequenceMatcher(None, request.lower(), something.lower()).get_opcodes()
-        d1 = sum(i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete'))
-        d2 = sum(j2 - j1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'insert'))
-        return 1 - d1 / len(request) - d2 / len(something) / 5
+        opcodes = difflib.SequenceMatcher(None, request, something).get_opcodes()
+        n1 = [i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete')]
+        n2 = [j2 - j1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'insert')]
+        score = 1.2
+        score -= 2 * sum(n1) / len(request) - len(n1) / 20
+        score -= len(n2) / 10
+        return score
 
     def score(self, request):
-        return (2 * self._score(request, self.name) + self._score(request, self.detail)) / 3
+        N1 = 3
+        N2 = 1
+        score_sensitive = (N1 * self._score(request, self.name) + (N2 * self._score(request, self.detail))) / (N1 + N2)
+        score_insensitive = (N1 * self._score(request.lower(), self.name.lower()) + (N2 * self._score(request.lower(), self.detail.lower()))) / (N1 + N2)
+        return (score_sensitive + score_insensitive) / 2
 
     def __repr__(self):
         return f'Item({self.format_title()})'
