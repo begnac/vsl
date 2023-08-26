@@ -28,13 +28,14 @@ import weakref
 
 from . import logger
 from . import items
+from . import __program_name__, __version__
 
 
 class HeaderBar(Gtk.HeaderBar):
     def __init__(self):
         self.title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
-        self.title = Gtk.Label(css_classes=['title'], label='Title')
-        self.subtitle = Gtk.Label(css_classes=['subtitle'], label='Subtitle')
+        self.title = Gtk.Label(css_classes=['title'], label=__program_name__)
+        self.subtitle = Gtk.Label(css_classes=['subtitle'], label=__version__)
         self.title_box.append(self.title)
         self.title_box.append(self.subtitle)
         super().__init__(title_widget=self.title_box)
