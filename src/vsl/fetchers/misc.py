@@ -96,6 +96,9 @@ class ItemDesktop(items.ItemBase):
     def activate(self):
         Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
 
+    def score(self, request):
+        return super().score(request) + 0.1
+
 
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
