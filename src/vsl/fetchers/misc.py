@@ -92,14 +92,6 @@ class FetcherLocate(base.FetcherLeaf):
                 self.append_item(item, score)
 
 
-class ItemDesktop(items.ItemBase):
-    def activate(self):
-        Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
-
-    def score(self, request):
-        return super().score(request) + 0.1
-
-
 @base.chain(base.FetcherTop)
 @base.chain(base.FetcherMinScore)
 @base.chain(base.FetcherScoreItems)
@@ -107,5 +99,5 @@ class FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Applications"), 'applications-utilities')
         for appinfo in Gio.app_info_get_all():
-            item = ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("{name} [application]"), icon=appinfo.get_icon())
+            item = items.ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("{name} [application]"), icon=appinfo.get_icon())
             self.append_item(item)

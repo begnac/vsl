@@ -91,6 +91,14 @@ class ItemNoop(ItemBase):
         return 0.2
 
 
+class ItemDesktop(ItemBase):
+    def activate(self):
+        Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
+
+    def score(self, request):
+        return super().score(request) + 0.1
+
+
 class ItemLauncher(ItemBase):
     @staticmethod
     def async_callback(launcher, result):
