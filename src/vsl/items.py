@@ -24,6 +24,7 @@ from gi.repository import Gio
 from gi.repository import Gtk
 
 import difflib
+import subprocess
 
 
 class ScoredItem(GObject.Object):
@@ -121,3 +122,8 @@ class ItemFile(ItemLauncher):
 class ItemAction(ItemBase):
     def activate(self):
         Gio.Application.get_default().activate_action(self.detail)
+
+
+class ItemExecutable(ItemLauncher):
+    def activate(self):
+        subprocess.Popen([self.detail])
