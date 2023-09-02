@@ -28,9 +28,7 @@ from . import base
 from .. import items
 
 
-@base.chain(base.FetcherTop)
-@base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreItems)
+@base.score
 class FetcherActions(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("VSL actions"), icon='face-devilish')
@@ -38,9 +36,7 @@ class FetcherActions(base.FetcherLeaf):
         self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='window-close'))
 
 
-@base.chain(base.FetcherTop)
-@base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreItems)
+@base.score
 class FetcherLocate(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Locate files"), 'system-search')
@@ -103,9 +99,7 @@ class FetcherLocate(base.FetcherLeaf):
                 self.append_item(item, score)
 
 
-@base.chain(base.FetcherTop)
-@base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreItems)
+@base.score
 class FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Applications"), 'applications-utilities')
