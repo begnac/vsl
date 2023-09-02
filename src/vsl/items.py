@@ -65,8 +65,8 @@ class ItemBase:
         n1 = [i2 - i1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'delete')]
         n2 = [j2 - j1 for opcode, i1, i2, j1, j2 in opcodes if opcode in ('replace', 'insert')]
         score = 1.2
-        score -= 2 * sum(n1) / len(request) - len(n1) / 20
-        score -= len(n2) / 10
+        score -= 2 * sum(n1) / len(request) + len(n1) / 10
+        score -= sum(n2) / len(something) / len(request) + len(n2) / 20
         return score
 
     def score(self, request):
@@ -90,6 +90,14 @@ class ItemNoop(ItemBase):
 
     def score(self, request):
         return 0.2
+
+
+class ItemDesktop(ItemBase):
+    def activate(self):
+        Gio.DesktopAppInfo.new_from_filename(self.detail).launch()
+
+    def score(self, request):
+        return super().score(request) + 0.1
 
 
 class ItemLauncher(ItemBase):
