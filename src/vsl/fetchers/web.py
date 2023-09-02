@@ -80,9 +80,7 @@ class FirefoxInfo:
     #         await db.close()
 
 
-@base.chain(base.FetcherTop)
-@base.chain(base.FetcherMinScore)
-@base.chain(base.FetcherScoreItems)
+@base.score
 class FetcherFirefoxBookmarks(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Firefox bookmarks"), 'firefox')

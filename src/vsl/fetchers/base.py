@@ -25,12 +25,19 @@ from .. import items
 from .. import logger
 
 
-def chain(ChainClass, *cargs, **ckwargs):
-    def decorator(OldClass):
+def chain(pipe, *cargs, **ckwargs):
+    def decorator(old):
         def init(self, *args, **kwargs):
-            ChainClass.__init__(self, OldClass(*args, **kwargs), *cargs, **ckwargs)
-        return type(f'{OldClass.__name__}->{ChainClass.__name__}', (ChainClass,), dict(__init__=init))
+            pipe.__init__(self, old(*args, **kwargs), *cargs, **ckwargs)
+        return type(f'{old.__name__}->{pipe.__name__}', (pipe,), dict(__init__=init))
     return decorator
+
+
+def score(old):
+    old = chain(FetcherScoreItems)(old)
+    old = chain(FetcherMinScore)(old)
+    old = chain(FetcherTop)(old)
+    return old
 
 
 class FetcherBase:
