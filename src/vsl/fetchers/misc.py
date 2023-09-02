@@ -45,14 +45,18 @@ class FetcherLocate(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Locate files"), 'system-search')
         self.future = None
+        self.last_async_request = None
 
     def do_request(self, request):
+        if self.last_async_request is not None and request.startswith(self.last_async_request):
+            return
         self.reply.remove_all()
         if len(request) < 3:
             self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon=self.icon), 0.2)
             self.future = None
         else:
             self.future = asyncio.ensure_future(self.async_do_request(request))
+            self.last_async_request = None
 
     async def async_do_request(self, request):
         future = asyncio.current_task()
@@ -71,13 +75,20 @@ class FetcherLocate(base.FetcherLeaf):
                 return
             elif not new_data:
                 self.future = None
+                self.last_async_request = request
                 return
             *filenames, data = (data + new_data).split(b'\n')
             for filename in filenames:
                 filename = filename.decode()
                 content_type, encoding = mimetypes.guess_type(filename)
                 name = os.path.basename(filename)
-                if content_type is not None:
+                if os.path.isfile(filename) and os.access(filename, os.X_OK):
+                    icon = 'application-x-executable'
+                    title = _("{name} [Executable]")
+                    item = items.ItemExecutable(name=name, detail=filename, title=title, icon=icon)
+                    self.append_item(item, 0.1)
+                    continue
+                elif content_type is not None:
                     icon = Gio.content_type_get_icon(content_type)
                     title = _("{{name}} [{description}]").format(description=Gio.content_type_get_description(content_type))
                 elif os.path.isdir(filename):
