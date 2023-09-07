@@ -75,28 +75,34 @@ class FetcherLocate(base.FetcherLeaf):
                 return
             *filenames, data = (data + new_data).split(b'\n')
             for filename in filenames:
-                filename = filename.decode()
-                content_type, encoding = mimetypes.guess_type(filename)
-                name = os.path.basename(filename)
-                if os.path.isfile(filename) and os.access(filename, os.X_OK):
-                    icon = 'application-x-executable'
-                    title = _("{name} [Executable]")
-                    item = items.ItemExecutable(name=name, detail=filename, title=title, icon=icon)
-                    self.append_item(item, 0.1)
-                    continue
-                elif content_type is not None:
-                    icon = Gio.content_type_get_icon(content_type)
-                    title = _("{{name}} [{description}]").format(description=Gio.content_type_get_description(content_type))
-                elif os.path.isdir(filename):
-                    icon = 'folder'
-                    name += '/'
-                    title = None
-                else:
-                    icon = None
-                    title = None
-                score = 0.0 if filename.startswith(os.path.expanduser('~/')) else -0.1
-                item = items.ItemFile(name=name, detail=filename, title=title, icon=icon)
-                self.append_item(item, score)
+                self.add_filename(filename.decode())
+
+    def add_filename(self, filename):
+        content_type, encoding = mimetypes.guess_type(filename)
+        name = os.path.basename(filename)
+        score = 0.0
+        if not filename.startswith(os.path.expanduser('~/')):
+            score -= 0.1
+        if '/.git/' in filename:
+            score -= 0.3
+        if os.path.isfile(filename) and os.access(filename, os.X_OK):
+            icon = 'application-x-executable'
+            title = _("{name} [Executable]")
+            item = items.ItemExecutable(name=name, detail=filename, title=title, icon=icon)
+            score += 0.1
+        else:
+            if content_type is not None:
+                icon = Gio.content_type_get_icon(content_type)
+                title = _("{{name}} [{description}]").format(description=Gio.content_type_get_description(content_type))
+            elif os.path.isdir(filename):
+                icon = 'folder'
+                name += '/'
+                title = None
+            else:
+                icon = None
+                title = None
+            item = items.ItemFile(name=name, detail=filename, title=title, icon=icon)
+        self.append_item(item, score)
 
 
 @base.score
