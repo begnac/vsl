@@ -47,12 +47,12 @@ class FetcherLocate(base.FetcherLeaf):
         if self.last_async_request is not None and request.startswith(self.last_async_request):
             return
         self.reply.remove_all()
+        self.last_async_request = None
         if len(request) < 3:
             self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon=self.icon), 0.2)
             self.future = None
         else:
             self.future = asyncio.ensure_future(self.async_do_request(request))
-            self.last_async_request = None
 
     async def async_do_request(self, request):
         future = asyncio.current_task()
