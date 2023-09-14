@@ -44,12 +44,11 @@ class ScoredItem(GObject.Object):
 
 
 class ItemBase:
-    def __init__(self, *, name, detail, title=None, icon=None, score_detail=0.25):
+    def __init__(self, *, name, detail, title=None, icon=None):
         self.name = name
         self.detail = detail
         self.title = title or "{name}"
         self.icon = icon
-        self.score_detail = score_detail
 
     def activate(self):
         raise NotImplementedError
@@ -70,7 +69,7 @@ class ItemBase:
         return score
 
     def score(self, request):
-        return (1 - self.score_detail) * self._score(request.lower(), self.name.lower()) + self.score_detail * self._score(request.lower(), self.detail.lower())
+        return max(self._score(request.lower(), self.name.lower()), self._score(request.lower(), self.detail.lower()) - 0.05)
 
     def __repr__(self):
         return f'Item({self.format_title()})'
