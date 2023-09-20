@@ -18,10 +18,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from gi.repository import Gdk
+
 import sys
 
 from . import app
 from . import __application__
 
 
-app.App().run([__application__] + sys.argv[1:])
+if Gdk.Display.get_default() is None:
+    print(_("Cannot open display"))
+else:
+    app.App().run([__application__] + sys.argv[1:])
