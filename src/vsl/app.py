@@ -148,7 +148,7 @@ class App(Gtk.Application):
         if win:
             win.destroy()
 
-    def quit(self, *args):
-        logger.debug("Quit")
-        super().quit()
-        return True
+    # def quit(self, *args):
+    #     logger.debug("Quit")
+    #     super().quit()
+    #     return True
