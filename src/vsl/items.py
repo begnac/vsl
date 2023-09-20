@@ -23,6 +23,7 @@ from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import Gtk
 
+import os
 import difflib
 import subprocess
 
@@ -113,16 +114,42 @@ class ItemUri(ItemLauncher):
         Gtk.UriLauncher(uri=self.detail).launch(None, None, self.async_callback)
 
 
-class ItemFile(ItemLauncher):
+class ItemFolder(ItemLauncher):
+    def __init__(self, path):
+        super().__init__(name=os.path.basename(path) + '/', detail=path, icon='folder')
+
     def activate(self):
         Gtk.FileLauncher(file=Gio.File.new_for_path(self.detail)).launch(None, None, self.async_callback)
+
+
+class ItemFile(ItemBase):
+    def __init__(self, path):
+        self.content_type, self.content_type_certain = Gio.content_type_guess(path)
+        if self.content_type is not None:
+            icon = Gio.content_type_get_icon(self.content_type)
+            title = _("{{name}} [{description}]").format(description=Gio.content_type_get_description(self.content_type))
+        else:
+            icon = None
+            title = None
+        super().__init__(name=os.path.basename(path), detail=path, title=title, icon=icon)
+
+    def activate(self):
+        if self.content_type is None:
+            return
+        app_info = Gio.AppInfo.get_default_for_type(self.content_type, False)
+        if app_info is None:
+            return
+        app_info.launch([Gio.File.new_for_path(self.detail)])
+
+
+class ItemExecutable(ItemBase):
+    def __init__(self, path):
+        super().__init__(name=os.path.basename(path), detail=path, title=_("{name} [Executable]"), icon='application-x-executable')
+
+    def activate(self):
+        subprocess.Popen([self.detail])
 
 
 class ItemAction(ItemBase):
     def activate(self):
         Gio.Application.get_default().activate_action(self.detail)
-
-
-class ItemExecutable(ItemLauncher):
-    def activate(self):
-        subprocess.Popen([self.detail])

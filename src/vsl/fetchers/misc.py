@@ -22,7 +22,6 @@ from gi.repository import Gio
 
 import asyncio
 import os
-import mimetypes
 
 from . import base
 from .. import items
@@ -73,35 +72,23 @@ class FetcherLocate(base.FetcherLeaf):
                 self.future = None
                 self.last_async_request = request
                 return
-            *filenames, data = (data + new_data).split(b'\n')
-            for filename in filenames:
-                self.add_filename(filename.decode())
+            *paths, data = (data + new_data).split(b'\n')
+            for path in paths:
+                self.add_path(path.decode())
 
-    def add_filename(self, filename):
-        content_type, encoding = mimetypes.guess_type(filename)
-        name = os.path.basename(filename)
+    def add_path(self, path):
         score = 0.0
-        if not filename.startswith(os.path.expanduser('~/')):
+        if not path.startswith(os.path.expanduser('~/')):
             score -= 0.1
-        if '/.git/' in filename:
+        if '/.git/' in path or '/.cache/' in path:
             score -= 0.3
-        if os.path.isfile(filename) and os.access(filename, os.X_OK):
-            icon = 'application-x-executable'
-            title = _("{name} [Executable]")
-            item = items.ItemExecutable(name=name, detail=filename, title=title, icon=icon)
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            item = items.ItemExecutable(path)
             score += 0.1
+        elif os.path.isdir(path):
+            item = items.ItemFolder(path)
         else:
-            if content_type is not None:
-                icon = Gio.content_type_get_icon(content_type)
-                title = _("{{name}} [{description}]").format(description=Gio.content_type_get_description(content_type))
-            elif os.path.isdir(filename):
-                icon = 'folder'
-                name += '/'
-                title = None
-            else:
-                icon = None
-                title = None
-            item = items.ItemFile(name=name, detail=filename, title=title, icon=icon)
+            item = items.ItemFile(path)
         self.append_item(item, score)
 
 
