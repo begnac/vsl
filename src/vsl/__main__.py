@@ -1,6 +1,6 @@
 # coding: utf-8
 #
-# Very Simple Launcher
+# Generic Gtk application launcher script
 #
 # Copyright (C) Itaï BEN YAACOV
 #
@@ -20,13 +20,9 @@
 
 from gi.repository import Gdk
 
-import sys
-
 from . import app
-from . import __application__
-
 
 if Gdk.Display.get_default() is None:
     print(_("Cannot open display"))
 else:
-    app.App().run([__application__] + sys.argv[1:])
+    app.App().run()
