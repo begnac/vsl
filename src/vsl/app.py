@@ -81,7 +81,7 @@ class App(Gtk.Application):
 
         ui.CssProvider().add_myself()
 
-        self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.quit)
+        self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: self.quit() or True)
         gasyncio.start_slave_loop()
 
         self.actions = (ActionQuit(), ActionClose())
@@ -147,8 +147,3 @@ class App(Gtk.Application):
         win = self.get_active_window()
         if win:
             win.destroy()
-
-    # def quit(self, *args):
-    #     logger.debug("Quit")
-    #     super().quit()
-    #     return True
