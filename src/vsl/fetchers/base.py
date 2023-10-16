@@ -37,6 +37,7 @@ def score(old):
     old = chain(FetcherScoreItems)(old)
     old = chain(FetcherMinScore)(old)
     old = chain(FetcherTop)(old)
+    old = chain(FetcherScoreDecay, factor=0.8)(old)
     return old
 
 
@@ -108,15 +109,15 @@ class FetcherTop(FetcherPipe):
 
 class FetcherMinScore(FetcherPipe):
     def __init__(self, fetcher, *, score=0.2):
-        filter = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
-        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter))
+        filter_ = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
+        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter_))
 
 
 class FetcherNonEmpty(FetcherPipe):
     def __init__(self, fetcher):
         self.nonempty = False
-        filter = Gtk.CustomFilter.new(lambda item: False)
-        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter))
+        filter_ = Gtk.CustomFilter.new(lambda item: False)
+        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter_))
 
     def do_request(self, request):
         if request:
@@ -128,12 +129,24 @@ class FetcherNonEmpty(FetcherPipe):
             self.reply.set_filter(Gtk.CustomFilter.new(lambda item: False))
 
 
-class FetcherChangeScore(FetcherPipe):
+class FetcherScoreDelta(FetcherPipe):
     def __init__(self, fetcher):
         super().__init__(fetcher, Gtk.MapListModel(model=fetcher.reply))
 
     def set_score_delta(self, delta):
         self.reply.set_map_func(lambda i: i.apply_delta(delta))
+
+
+class FetcherScoreDecay(FetcherPipe):
+    def __init__(self, fetcher, *, factor):
+        super().__init__(fetcher, Gio.ListStore(item_type=items.ScoredItem))
+        self.fetcher.reply.connect('items-changed', self.fetcher_items_changed_cb, self.reply, factor)
+
+    @staticmethod
+    def fetcher_items_changed_cb(source, p, r, a, target, factor):
+        target[p:p + r] = [items.ScoredItem(source[i].item, source[i].score * factor ** i) for i in range(p, p + a)]
+        for item in target[p + a:]:
+            item.score *= factor ** (a - r)
 
 
 class FetcherScoreItems(FetcherPipe):
@@ -158,7 +171,7 @@ class FetcherPrefix(FetcherPipe):
         replies = Gio.ListStore(item_type=Gio.ListModel)
         super().__init__(fetcher, Gtk.FlattenListModel(model=replies))
 
-        self.score_fetcher = FetcherChangeScore(fetcher)
+        self.score_fetcher = FetcherScoreDelta(fetcher)
         self.nonempty_fetcher = FetcherNonEmpty(self.score_fetcher)
         self.prefix_fetcher = FetcherLeaf()
 
