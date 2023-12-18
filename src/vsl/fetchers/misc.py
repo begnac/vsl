@@ -37,6 +37,8 @@ class FetcherActions(base.FetcherLeaf):
 
 @base.score
 class FetcherLocate(base.FetcherLeaf):
+    MIN_LENGTH = 4
+
     def __init__(self):
         super().__init__(_("Locate files"), 'system-search')
         self.future = None
@@ -47,8 +49,8 @@ class FetcherLocate(base.FetcherLeaf):
             return
         self.reply.remove_all()
         self.last_async_request = None
-        if len(request) < 3:
-            self.append_item(items.ItemNoop(name=_("Type at least three characters to locate files"), detail='', icon=self.icon), 0.2)
+        if len(request) < self.MIN_LENGTH:
+            self.append_item(items.ItemNoop(name=_("Type at least {MIN_LENGTH} characters to locate files").format(MIN_LENGTH=self.MIN_LENGTH), detail='', icon=self.icon), 0.2)
             self.future = None
         else:
             self.future = asyncio.ensure_future(self.async_do_request(request))
