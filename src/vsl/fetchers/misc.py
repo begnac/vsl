@@ -41,7 +41,7 @@ class FetcherLocate(base.FetcherLeaf):
 
     def __init__(self):
         super().__init__(_("Locate files"), 'system-search')
-        self.future = None
+        self.task = None
         self.last_async_request = None
 
     def do_request(self, request):
@@ -51,27 +51,27 @@ class FetcherLocate(base.FetcherLeaf):
         self.last_async_request = None
         if len(request) < self.MIN_LENGTH:
             self.append_item(items.ItemNoop(name=_("Type at least {MIN_LENGTH} characters to locate files").format(MIN_LENGTH=self.MIN_LENGTH), detail='', icon=self.icon), 0.2)
-            self.future = None
+            self.task = None
         else:
-            self.future = asyncio.ensure_future(self.async_do_request(request))
+            self.task = asyncio.create_task(self.async_do_request(request))
 
     async def async_do_request(self, request):
-        future = asyncio.current_task()
-        if future != self.future:
+        task = asyncio.current_task()
+        if task != self.task:
             return
 
         process = None
         process = await asyncio.create_subprocess_exec('plocate', '-iN', request, stdout=asyncio.subprocess.PIPE)
-        if future != self.future:
+        if task != self.task:
             return
 
         data = b''
         while True:
             new_data = await process.stdout.read(1024)
-            if future != self.future:
+            if task != self.task:
                 return
             elif not new_data:
-                self.future = None
+                self.task = None
                 self.last_async_request = request
                 return
             *paths, data = (data + new_data).split(b'\n')
