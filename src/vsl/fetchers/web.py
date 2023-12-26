@@ -133,18 +133,16 @@ class FetcherUrl(base.FetcherLeaf):
 
     def do_request(self, request):
         self.reply.remove_all()
-        result = urllib.parse.urlsplit(request)
-        if result.scheme in ('http', 'https'):
-            uri = request
+        url = urllib.parse.urlsplit(request)
+        if url.scheme in ('http', 'https'):
             score = 1.0
-        elif result.scheme != '':
+        elif url.scheme != '':
             return
         else:
-            uri = 'https://' + request
-            result = urllib.parse.urlsplit(uri)
-            if '.' in result.netloc and all(result.netloc.split('.')) and result.netloc == request:
+            url = urllib.parse.urlsplit('https://' + request)
+            if '.' in url.netloc and all(url.netloc.split('.')) and url.netloc == request:
                 score = 0.9
             else:
                 return
-        item = items.ItemUri(name=self.name, detail=uri, icon=self.icon)
+        item = items.ItemUri(name=self.name, detail=urllib.parse.urlunsplit(url), icon=self.icon)
         self.append_item(item, score)
