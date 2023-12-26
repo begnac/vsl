@@ -27,6 +27,8 @@ import os
 import difflib
 import subprocess
 
+from . import logger
+
 
 class ScoredItem(GObject.Object):
     def __init__(self, item, score=0.0):
@@ -105,8 +107,8 @@ class ItemLauncher(ItemBase):
     def async_callback(launcher, result):
         try:
             launcher.launch_finish(result)
-        except GLib.GError as e:
-            print(e)
+        except GLib.GError as error:
+            logger.error(error.message)
 
 
 class ItemUri(ItemLauncher):

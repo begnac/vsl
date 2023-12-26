@@ -27,7 +27,11 @@ logger = logging.getLogger(__application__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
-setLevel = logger.setLevel
+
+def setLevelDebug():
+    logger.setLevel(logging.DEBUG)
+
+
 debug = logger.debug
 info = logger.info
 warning = logger.warning

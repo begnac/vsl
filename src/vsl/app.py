@@ -25,7 +25,6 @@ from gi.repository import Gdk
 from gi.repository import Gtk
 
 import signal
-import logging
 
 import gasyncio
 
@@ -117,7 +116,7 @@ class App(Gtk.Application):
         options = command_line.get_options_dict().end().unpack()
 
         if 'debug' in options:
-            logger.setLevel(logging.DEBUG)
+            logger.setLevelDebug()
 
         if 'request' in options:
             self.set_request(options['request'])
