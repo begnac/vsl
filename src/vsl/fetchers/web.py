@@ -18,10 +18,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from gi.repository import GLib
 from gi.repository import Gio
 from gi.repository import GdkPixbuf
 
 import os
+import json
 import configparser
 import asyncio
 import aiosqlite
@@ -29,6 +31,62 @@ import urllib.parse
 
 from . import base
 from .. import items
+
+
+class ChromiumInfo:
+    ROOT = os.path.join(GLib.get_user_config_dir(), 'chromium', 'Default')
+
+    @classmethod
+    async def db(cls, name):
+        path = os.path.join(cls.ROOT, name)
+        return await aiosqlite.connect(f'file:{path}?immutable=1', uri=True)
+
+    @classmethod
+    async def get_favicon_db(cls):
+        return await cls.db('Favicons')
+
+    @classmethod
+    async def get_favicon_from_db(cls, favicon, db):
+        icons = await db.execute('SELECT image_data '
+                                 'FROM favicon_bitmaps '
+                                 'JOIN icon_mapping on favicon_bitmaps.icon_id = icon_mapping.icon_id '
+                                 'WHERE page_url = ? '
+                                 'ORDER BY width DESC', (favicon,))
+        async for data, in icons:
+            stream = Gio.MemoryInputStream.new_from_data(data)
+            return GdkPixbuf.Pixbuf.new_from_stream(stream)
+
+    @classmethod
+    async def get_favicon(cls, favicon):
+        db = await cls.get_favicon_db()
+        try:
+            return await cls.get_favicon_from_db(favicon, db)
+        finally:
+            await db.close()
+
+
+@base.score
+class FetcherChromiumBookmarks(base.FetcherLeaf):
+    def __init__(self):
+        super().__init__(_("Chromium bookmarks"), 'chromium')
+        asyncio.create_task(self.get_bookmarks())
+
+    async def get_bookmarks(self):
+        path = os.path.join(GLib.get_user_config_dir(), 'chromium', 'Default', 'Bookmarks')
+        bookmarks = json.loads(open(path, 'rb').read().decode('utf-8'))
+        favicons = await ChromiumInfo.get_favicon_db()
+        try:
+            await self.append_bookmarks(bookmarks['roots'].values(), favicons)
+        finally:
+            await favicons.close()
+
+    async def append_bookmarks(self, bookmarks, favicons):
+        for bookmark in bookmarks:
+            if bookmark['type'] == 'folder':
+                await self.append_bookmarks(bookmark['children'], favicons)
+            elif bookmark['type'] == 'url':
+                icon = (await ChromiumInfo.get_favicon_from_db(bookmark['url'], favicons)) or 'chromium'
+                self.append_item(items.ItemUri(name=bookmark['name'], detail=bookmark['url'], title=bookmark['name'], icon=icon), score=0.1)
 
 
 class FirefoxInfo:
@@ -67,18 +125,6 @@ class FirefoxInfo:
         finally:
             await db.close()
 
-    # @classmethod
-    # async def _DEBUG_find_favicon(cls, pattern):
-    #     db = await cls.db_in_profile('favicons')
-    #     try:
-    #         icons = await db.execute('SELECT icon_url '
-    #                                  'FROM moz_icons '
-    #                                  'WHERE icon_url LIKE ? ', (pattern,))
-    #         async for url, in icons:
-    #             print(url)
-    #     finally:
-    #         await db.close()
-
 
 @base.score
 class FetcherFirefoxBookmarks(base.FetcherLeaf):
@@ -112,22 +158,22 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
 
 
 class FetcherWebSearch(base.FetcherLeaf):
-    def __init__(self, url, name, icon=None, favicon=None):
+    def __init__(self, url, name, icon=None, favicon=None, favicon_source=FirefoxInfo):
         super().__init__(name, icon)
         self.url = url
 
         if favicon:
-            asyncio.ensure_future(self.get_icon(favicon))
+            asyncio.create_task(self.get_icon(favicon, favicon_source))
 
-    async def get_icon(self, favicon):
-        self.icon = await FirefoxInfo.get_favicon(favicon)
+    async def get_icon(self, favicon, favicon_source):
+        self.icon = await favicon_source.get_favicon(favicon)
 
     def do_request(self, request):
         self.reply.remove_all()
         self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon), score=0.7)
 
 
-class FetcherUrl(base.FetcherLeaf):
+class FetcherWebUrl(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Open URL in browser"), 'web-browser')
 

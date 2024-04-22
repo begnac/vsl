@@ -18,13 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# import xdg.BaseDirectory
-# import configparser
-# import os
 import importlib
 
 from .fetchers import base
-# from . import __application__
 
 
 class Node:
@@ -72,9 +68,10 @@ class NodeMux(Node):
 class TreeData:
     def __init__(self):
         self.nodes = {
+            'ChromiumBookmarks': NodeImport('.web.FetcherChromiumBookmarks'),
             'FirefoxBookmarks': NodeImport('.web.FetcherFirefoxBookmarks'),
             'WebSearch': NodeImport('.web.FetcherWebSearch'),
-            'Url': NodeImport('.web.FetcherUrl'),
+            'Url': NodeImport('.web.FetcherWebUrl'),
             'Actions': NodeImport('.misc.FetcherActions'),
             'Locate': NodeImport('.misc.FetcherLocate'),
             'LaunchApp': NodeImport('.misc.FetcherLaunchApp'),
@@ -97,7 +94,8 @@ class TreeData:
                               ),
 
             'Root': NodeMux(None, None,
-                            ['fb', 'FirefoxBookmarks'],
+                            ['cb', 'ChromiumBookmarks'],
+                            # ['fb', 'FirefoxBookmarks'],
                             ['gg', 'Google'],
                             ['d', 'Debian'],
                             ['u', 'Url'],
