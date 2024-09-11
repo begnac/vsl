@@ -69,7 +69,7 @@ class TreeData:
     def __init__(self):
         self.nodes = {
             'ChromiumBookmarks': NodeImport('.chromium.FetcherChromiumBookmarks'),
-            # 'FirefoxBookmarks': NodeImport('.firefox.FetcherFirefoxBookmarks'),
+            'FirefoxBookmarks': NodeImport('.firefox.FetcherFirefoxBookmarks'),
             'WebSearch': NodeImport('.web.FetcherWebSearch'),
             'Url': NodeImport('.web.FetcherWebUrl'),
             'Actions': NodeImport('.misc.FetcherActions'),
@@ -94,8 +94,8 @@ class TreeData:
                               ),
 
             'Root': NodeMux(None, None,
-                            ['cb', 'ChromiumBookmarks'],
-                            # ['fb', 'FirefoxBookmarks'],
+                            # ['cb', 'ChromiumBookmarks'],
+                            ['fb', 'FirefoxBookmarks'],
                             ['gg', 'Google'],
                             ['d', 'Debian'],
                             ['u', 'Url'],
