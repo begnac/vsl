@@ -1,0 +1,85 @@
+[Root]
+type = mux
+# _cb = ChromiumBookmarks
+_fb = FirefoxBookmarks
+_gg = Google
+_d = Debian
+_u = Url
+_vsl = Actions
+_lo = Locate
+_a = LaunchApp
+
+[ChromiumBookmarks]
+type = import
+name = .chromium.FetcherChromiumBookmarks
+
+[FirefoxBookmarks]
+type = import
+name = .firefox.FetcherFirefoxBookmarks
+
+[Google]
+type = import
+name = .web.FetcherWebSearch
+_url = https://www.google.com/search?q=%s
+_name = Google search
+_favicon = https://www.google.com/favicon.ico
+
+[Debian]
+type = mux
+name = Debian searches
+icon = emblem-debian
+_p = DebianPackage
+_f = DebianFile
+_b = DebianBugs
+
+[DebianPackage]
+type = import
+name = .web.FetcherWebSearch
+_url = https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any
+_name = Debian package search
+_icon = emblem-debian
+
+[DebianFile]
+type = import
+name = .web.FetcherWebSearch
+_url = https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any
+_name = Debian file search
+_icon = emblem-debian
+
+[DebianBugs]
+type = mux
+name = Debian bugs
+icon = emblem-debian
+_b = DebianBugNumber
+_p = DebianBugPackage
+
+[DebianBugNumber]
+type = import
+name = .web.FetcherWebSearch
+_url = https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s
+_name = Debian bug by number
+_icon = emblem-debian
+
+[DebianBugPackage]
+type = import
+name = .web.FetcherWebSearch
+_url = https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s
+_name = Debian bugs by package
+_icon = emblem-debian
+
+[Url]
+type = import
+name = .web.FetcherWebUrl
+
+[Actions]
+type = import
+name = .misc.FetcherActions
+
+[Locate]
+type = import
+name = .misc.FetcherLocate
+#_preferred_extensions = .tex
+
+[LaunchApp]
+type = import
+name = .misc.FetcherLaunchApp

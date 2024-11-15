@@ -18,13 +18,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import configparser
+import signal
+import os
+
 from gi.repository import GLib
 from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import Gdk
 from gi.repository import Gtk
-
-import signal
 
 import gasyncio
 
@@ -51,16 +53,6 @@ class Action(Gio.SimpleAction):
         self.disconnect_by_func(self.activate_cb)
 
 
-class ActionQuit(Action):
-    def __init__(self):
-        super().__init__(name='quit', accels=['<Control>q'], activate_cb=lambda app: app.quit())
-
-
-class ActionClose(Action):
-    def __init__(self):
-        super().__init__(name='close', accels=['Escape'], activate_cb=lambda app: app.close_window())
-
-
 class App(Gtk.Application):
     request = GObject.Property(type=str, default='')
 
@@ -72,27 +64,41 @@ class App(Gtk.Application):
         self.add_main_option('request', ord('r'), GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _("Request text"), None)
         self.add_main_option('clipboard', ord('c'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Request from clipboard"), None)
 
+        self.connect('startup', self.startup_cb)
+        self.connect('shutdown', self.shutdown_cb)
+        self.connect('handle-local-options', self.handle_local_options_cb)
+        self.connect('command-line', self.command_line_cb)
+        self.connect('activate', self.activate_cb)
+
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    def do_startup(self):
-        Gtk.Application.do_startup(self)
-
+    @staticmethod
+    def startup_cb(self):
         ui.CssProvider().add_myself()
 
         self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: self.quit() or True)
         gasyncio.start_slave_loop()
 
-        self.actions = (ActionQuit(), ActionClose())
+        self.actions = (
+            Action(name='quit', accels=['<Control>q'], activate_cb=lambda app: app.quit()),
+            Action(name='close', accels=['Escape'], activate_cb=lambda app: app.close_window())
+        )
         for action in self.actions:
             action.add_to_app(self)
 
-        self.root_fetcher = tree.Root()
+        config_file = os.path.join(GLib.get_user_config_dir(), __application__)
+        config = configparser.ConfigParser(interpolation=None)
+        if os.path.exists(config_file):
+            config.read_file(open(config_file), source=config_file)
+        self.root_fetcher = tree.fetcher_from_config(config)
+
         self.connect('notify::request', lambda self_, param: self_.root_fetcher.do_request(self_.request))
 
         self.hold()
 
-    def do_shutdown(self):
+    @staticmethod
+    def shutdown_cb(self):
         logger.debug("Shutting down")
 
         self.close_window()
@@ -101,18 +107,18 @@ class App(Gtk.Application):
         self.release()
         gasyncio.stop_slave_loop()
         GLib.source_remove(self.sigint_source)
-        Gtk.Application.do_shutdown(self)
 
-    def do_handle_local_options(self, options):
+    @staticmethod
+    def handle_local_options_cb(self, options):
         if options.contains('version'):
             print(_("{program} version {version}").format(program=__program_name__, version=__version__))
             print(__copyright__)
             print(__license_type__)
             return 0
+        return -1
 
-        return Gtk.Application.do_handle_local_options(self, options)
-
-    def do_command_line(self, command_line):
+    @staticmethod
+    def command_line_cb(self, command_line):
         options = command_line.get_options_dict().end().unpack()
 
         if 'debug' in options:
@@ -131,8 +137,8 @@ class App(Gtk.Application):
         except GLib.GError:
             pass
 
-    def do_activate(self):
-        Gtk.Application.do_activate(self)
+    @staticmethod
+    def activate_cb(self):
         win = self.get_active_window() or ui.Window(self, self.root_fetcher)
         win.present()
 

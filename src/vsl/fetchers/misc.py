@@ -18,10 +18,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from gi.repository import Gio
-
 import asyncio
 import os
+import re
+
+from gi.repository import Gio
 
 from . import base
 from .. import items
@@ -39,8 +40,9 @@ class FetcherActions(base.FetcherLeaf):
 class FetcherLocate(base.FetcherLeaf):
     MIN_LENGTH = 4
 
-    def __init__(self):
+    def __init__(self, *, exclude=()):
         super().__init__(_("Locate files"), 'system-search')
+        self.exclude = [pattern.strip() for pattern in exclude.split(',')]
         self.task = None
         self.last_async_request = None
 
@@ -79,6 +81,10 @@ class FetcherLocate(base.FetcherLeaf):
                 self.add_path(path.decode())
 
     def add_path(self, path):
+        for pattern in self.exclude:
+            if re.search(pattern, path):
+                print(pattern, path)
+                return
         score = 0.0
         if not path.startswith(os.path.expanduser('~/')):
             score -= 0.1
