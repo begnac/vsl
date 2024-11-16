@@ -20,21 +20,19 @@
 
 import importlib
 
-from .fetchers import base
+from . import base
 
 
 def fetcher_from_config(config, name='Root'):
     section = config[name]
-    extra = get_section_extra(section)
+    if config.has_section(f'{name}.args'):
+        args = config[f'{name}.args']
+    else:
+        args = {}
     if section['type'] == 'mux':
-        return base.FetcherTop(base.FetcherMux(section.get('name'), section.get('icon'), (base.FetcherPrefix(fetcher_from_config(config, name), prefix) for prefix, name in extra)))
+        fetchers = (base.FetcherPrefix(fetcher_from_config(config, name), prefix) for prefix, name in config[f'{name}.mux'].items())
+        return base.FetcherTop(base.FetcherMux(fetchers, **args))
     elif section['type'] == 'import':
-        module_name, node_name = section['name'].rsplit('.', 1)
-        module = importlib.import_module(module_name, 'vsl.fetchers')
-        return getattr(module, node_name)(**dict(extra))
-
-
-def get_section_extra(section):
-    for name, value in section.items():
-        if name.startswith('_'):
-            yield name[1:], value
+        module_name, node_name = section['import'].rsplit('.', 1)
+        module = importlib.import_module(module_name, __name__)
+        return getattr(module, node_name)(**args)

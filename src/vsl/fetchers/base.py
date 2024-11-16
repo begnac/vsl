@@ -71,7 +71,7 @@ class FetcherLeaf(FetcherSource):
 
 
 class FetcherMux(FetcherSource):
-    def __init__(self, name, icon, fetchers):
+    def __init__(self, fetchers, name=None, icon=None):
         self.fetchers = list(fetchers)
         replies = Gio.ListStore(item_type=Gio.ListModel)
         for fetcher in self.fetchers:

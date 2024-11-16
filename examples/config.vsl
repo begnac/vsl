@@ -1,85 +1,107 @@
 [Root]
 type = mux
-# _cb = ChromiumBookmarks
-_fb = FirefoxBookmarks
-_gg = Google
-_d = Debian
-_u = Url
-_vsl = Actions
-_lo = Locate
-_a = LaunchApp
+
+[Root.mux]
+# cb = ChromiumBookmarks
+fb = FirefoxBookmarks
+gg = Google
+d = Debian
+u = Url
+vsl = Actions
+lo = Locate
+a = LaunchApp
 
 [ChromiumBookmarks]
 type = import
-name = .chromium.FetcherChromiumBookmarks
+import = .chromium.FetcherChromiumBookmarks
 
 [FirefoxBookmarks]
 type = import
-name = .firefox.FetcherFirefoxBookmarks
+import = .firefox.FetcherFirefoxBookmarks
 
 [Google]
 type = import
-name = .web.FetcherWebSearch
-_url = https://www.google.com/search?q=%s
-_name = Google search
-_favicon = https://www.google.com/favicon.ico
+import = .web.FetcherWebSearch
+
+[Google.args]
+url = https://www.google.com/search?q=%s
+name = Google search
+favicon = https://www.google.com/favicon.ico
 
 [Debian]
 type = mux
+
+[Debian.args]
 name = Debian searches
 icon = emblem-debian
-_p = DebianPackage
-_f = DebianFile
-_b = DebianBugs
+
+[Debian.mux]
+p = DebianPackage
+f = DebianFile
+b = DebianBugs
 
 [DebianPackage]
 type = import
-name = .web.FetcherWebSearch
-_url = https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any
-_name = Debian package search
-_icon = emblem-debian
+import = .web.FetcherWebSearch
+
+[DebianPackage.args]
+url = https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any
+name = Debian package search
+icon = emblem-debian
 
 [DebianFile]
 type = import
-name = .web.FetcherWebSearch
-_url = https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any
-_name = Debian file search
-_icon = emblem-debian
+import = .web.FetcherWebSearch
+
+[DebianFile.args]
+url = https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any
+name = Debian file search
+icon = emblem-debian
 
 [DebianBugs]
 type = mux
+
+[DebianBugs.args]
 name = Debian bugs
 icon = emblem-debian
-_b = DebianBugNumber
-_p = DebianBugPackage
+
+[DebianBugs.mux]
+b = DebianBugNumber
+p = DebianBugPackage
 
 [DebianBugNumber]
 type = import
-name = .web.FetcherWebSearch
-_url = https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s
-_name = Debian bug by number
-_icon = emblem-debian
+import = .web.FetcherWebSearch
+
+[DebianBugNumber.args]
+url = https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s
+name = Debian bug by number
+icon = emblem-debian
 
 [DebianBugPackage]
 type = import
-name = .web.FetcherWebSearch
-_url = https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s
-_name = Debian bugs by package
-_icon = emblem-debian
+import = .web.FetcherWebSearch
+
+[DebianBugPackage.args]
+url = https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s
+name = Debian bugs by package
+icon = emblem-debian
 
 [Url]
 type = import
-name = .web.FetcherWebUrl
+import = .web.FetcherWebUrl
 
 [Actions]
 type = import
-name = .misc.FetcherActions
+import = .misc.FetcherActions
 
 [Locate]
 type = import
-name = .misc.FetcherLocate
-#_preferred_extensions = .tex
+import = .misc.FetcherLocate
+
+[Locate.args]
+exclude = ~$, .aux$
 
 [LaunchApp]
 type = import
-name = .misc.FetcherLaunchApp
+import = .misc.FetcherLaunchApp

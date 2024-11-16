@@ -32,7 +32,7 @@ import gasyncio
 
 from . import __application__, __program_name__, __version__, __copyright__, __license_type__
 from . import ui
-from . import tree
+from . import fetchers
 from . import logger
 
 
@@ -91,7 +91,7 @@ class App(Gtk.Application):
         config = configparser.ConfigParser(interpolation=None)
         if os.path.exists(config_file):
             config.read_file(open(config_file), source=config_file)
-        self.root_fetcher = tree.fetcher_from_config(config)
+        self.root_fetcher = fetchers.fetcher_from_config(config)
 
         self.connect('notify::request', lambda self_, param: self_.root_fetcher.do_request(self_.request))
 
