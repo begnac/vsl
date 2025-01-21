@@ -100,7 +100,7 @@ type = import
 import = .misc.FetcherLocate
 
 [Locate.args]
-exclude = ~$, .aux$
+exclude = ~$ .aux$
 
 [LaunchApp]
 type = import
