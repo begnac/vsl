@@ -66,7 +66,7 @@ name = Debian bugs
 icon = emblem-debian
 
 [DebianBugs.mux]
-b = DebianBugNumber
+n = DebianBugNumber
 p = DebianBugPackage
 
 [DebianBugNumber]
@@ -100,7 +100,11 @@ type = import
 import = .misc.FetcherLocate
 
 [Locate.args]
-exclude = ~$ .aux$
+min_length = 5
+exclude = ~$ .aux$ .gpg$ /.mozilla/
+
+[Locate.args.bonus]
+.tex$ = +1
 
 [LaunchApp]
 type = import
