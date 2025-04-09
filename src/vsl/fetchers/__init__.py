@@ -25,10 +25,14 @@ from . import base
 
 def fetcher_from_config(config, name='Root'):
     section = config[name]
-    if config.has_section(f'{name}.args'):
-        args = config[f'{name}.args']
+    nameargs = f'{name}.args'
+    if config.has_section(nameargs):
+        args = dict(config[nameargs])
     else:
         args = {}
+    for namesubarg in config.sections():
+        if namesubarg.startswith(nameargs + '.'):
+            args[namesubarg[len(nameargs) + 1:]] = dict(config[namesubarg])
     if section['type'] == 'mux':
         fetchers = (base.FetcherPrefix(fetcher_from_config(config, name), prefix) for prefix, name in config[f'{name}.mux'].items())
         return base.FetcherTop(base.FetcherMux(fetchers, **args))
