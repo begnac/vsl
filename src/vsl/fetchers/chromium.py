@@ -19,8 +19,7 @@
 
 
 from gi.repository import GLib
-from gi.repository import Gio
-from gi.repository import GdkPixbuf
+from gi.repository import Gdk
 
 import os
 import json
@@ -31,7 +30,7 @@ from . import base
 from .. import items
 
 
-class ChromiumInfo:
+class _ChromiumInfo:
     ROOT = os.path.join(GLib.get_user_config_dir(), 'chromium', 'Default')
 
     @classmethod
@@ -51,8 +50,7 @@ class ChromiumInfo:
                                  'WHERE page_url = ? '
                                  'ORDER BY width DESC', (favicon,))
         async for data, in icons:
-            stream = Gio.MemoryInputStream.new_from_data(data)
-            return GdkPixbuf.Pixbuf.new_from_stream(stream)
+            return Gdk.Texture.new_from_bytes(GLib.Bytes.new_take(data))
 
     @classmethod
     async def get_favicon(cls, favicon):
@@ -72,7 +70,7 @@ class FetcherChromiumBookmarks(base.FetcherLeaf):
     async def get_bookmarks(self):
         path = os.path.join(GLib.get_user_config_dir(), 'chromium', 'Default', 'Bookmarks')
         bookmarks = json.loads(open(path, 'rb').read().decode('utf-8'))
-        favicons = await ChromiumInfo.get_favicon_db()
+        favicons = await _ChromiumInfo.get_favicon_db()
         try:
             await self.append_bookmarks(bookmarks['roots'].values(), favicons)
         finally:
@@ -83,5 +81,5 @@ class FetcherChromiumBookmarks(base.FetcherLeaf):
             if bookmark['type'] == 'folder':
                 await self.append_bookmarks(bookmark['children'], favicons)
             elif bookmark['type'] == 'url':
-                icon = (await ChromiumInfo.get_favicon_from_db(bookmark['url'], favicons)) or 'chromium'
+                icon = (await _ChromiumInfo.get_favicon_from_db(bookmark['url'], favicons)) or 'chromium'
                 self.append_item(items.ItemUri(name=bookmark['name'], detail=bookmark['url'], title=bookmark['name'], icon=icon), score=0.1)
