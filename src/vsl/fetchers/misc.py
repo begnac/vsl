@@ -38,12 +38,14 @@ class FetcherActions(base.FetcherLeaf):
 
 @base.score
 class FetcherLocate(base.FetcherLeaf):
-    def __init__(self, *, min_length='4', exclude='', bonus={}):
+    def __init__(self, *, min_length='4', exclude='', max_paths=10000, bonus={}):
         super().__init__(_("Locate files"), 'system-search')
-        if bonus:
-            print("Bonus not implemented yet")
         self.min_length = int(min_length)
         self.exclude = [pattern for pattern in exclude.split() if pattern]
+        self.max_paths = max_paths
+        if bonus:
+            print("Bonus not implemented yet")
+
         self.task = None
         self.last_async_request = None
 
@@ -64,22 +66,32 @@ class FetcherLocate(base.FetcherLeaf):
             return
 
         process = None
-        process = await asyncio.create_subprocess_exec('plocate', '-iN', request, stdout=asyncio.subprocess.PIPE)
-        if task != self.task:
-            return
-
-        data = b''
-        while True:
-            new_data = await process.stdout.read(1024)
+        try:
+            process = await asyncio.create_subprocess_exec('plocate', '-iN', request, stdout=asyncio.subprocess.PIPE)
             if task != self.task:
                 return
-            elif not new_data:
-                self.task = None
-                self.last_async_request = request
-                return
-            *paths, data = (data + new_data).split(b'\n')
-            for path in paths:
-                self.add_path(path.decode())
+
+            data = b''
+            counter = 0
+            while True:
+                new_data = await process.stdout.read(1024)
+                if task != self.task:
+                    return
+                elif not new_data:
+                    self.task = None
+                    self.last_async_request = request
+                    return
+                *paths, data = (data + new_data).split(b'\n')
+                for path in paths:
+                    self.add_path(path.decode())
+                    counter += 1
+                    if counter == self.max_paths:
+                        self.task = None
+                        return
+        finally:
+            if process is not None and process.returncode is None:
+                process.kill()
+                await process.communicate()
 
     def add_path(self, path):
         for pattern in self.exclude:
