@@ -185,7 +185,8 @@ class Window(Gtk.ApplicationWindow):
     def items_changed_cb(model, position, removed, added, self):
         self = self()
         self.set_default_size(0, 0)
-        self.request_box.view.scroll_to(0, Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT, None)
+        if len(model) > 0:
+            self.request_box.view.scroll_to(0, Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT, None)
 
     def focus_request(self):
         self.request_box.entry.grab_focus()
