@@ -27,7 +27,7 @@ from .. import items
 
 
 class FetcherWeb(base.FetcherLeaf):
-    def __init__(self, url, name, icon=None, favicon=None, favicon_source=firefox.FirefoxInfo):
+    def __init__(self, url, name, icon=None, favicon=None, favicon_source=firefox._FirefoxInfo):
         super().__init__(name, icon)
         self.url = url
 

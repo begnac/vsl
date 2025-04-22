@@ -18,8 +18,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from gi.repository import Gio
-from gi.repository import GdkPixbuf
+from gi.repository import GLib
+from gi.repository import Gdk
 
 import os
 import configparser
@@ -30,7 +30,7 @@ from . import base
 from .. import items
 
 
-class FirefoxInfo:
+class _FirefoxInfo:
     FIREFOX_ROOT = os.path.expanduser('~/.mozilla/firefox')
     profile_path = None
 
@@ -61,8 +61,7 @@ class FirefoxInfo:
                                      'WHERE icon_url = ? '
                                      'ORDER BY moz_icons.width DESC', (favicon,))
             async for data, in icons:
-                stream = Gio.MemoryInputStream.new_from_data(data)
-                return GdkPixbuf.Pixbuf.new_from_stream(stream)
+                return Gdk.Texture.new_from_bytes(GLib.Bytes.new_take(data))
         finally:
             await db.close()
 
@@ -74,8 +73,8 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
         asyncio.ensure_future(self.setup())
 
     async def setup(self):
-        db1 = await FirefoxInfo.db_in_profile('places')
-        db2 = await FirefoxInfo.db_in_profile('favicons')
+        db1 = await _FirefoxInfo.db_in_profile('places')
+        db2 = await _FirefoxInfo.db_in_profile('favicons')
         bookmarks = await db1.execute('SELECT bookmarks.title, places.url '
                                       'FROM moz_bookmarks bookmarks '
                                       # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
@@ -88,8 +87,7 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
                                       'WHERE moz_pages_w_icons.page_url = ? '
                                       'ORDER BY moz_icons.width DESC', (url,))
             async for data, in icons:
-                stream = Gio.MemoryInputStream.new_from_data(data)
-                icon = GdkPixbuf.Pixbuf.new_from_stream(stream)
+                icon = Gdk.Texture.new_from_bytes(GLib.Bytes.new_take(data))
                 break
             else:
                 icon = 'firefox'
