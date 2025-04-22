@@ -21,7 +21,7 @@ import = .firefox.FetcherFirefoxBookmarks
 
 [Google]
 type = import
-import = .web.FetcherWebSearch
+import = .web.FetcherWeb
 
 [Google.args]
 url = https://www.google.com/search?q=%s
@@ -42,7 +42,7 @@ b = DebianBugs
 
 [DebianPackage]
 type = import
-import = .web.FetcherWebSearch
+import = .web.FetcherWeb
 
 [DebianPackage.args]
 url = https://packages.debian.org/search?searchon=names&keywords=%s&suite=sid&arch=any
@@ -51,7 +51,7 @@ icon = emblem-debian
 
 [DebianFile]
 type = import
-import = .web.FetcherWebSearch
+import = .web.FetcherWeb
 
 [DebianFile.args]
 url = https://packages.debian.org/search?searchon=contents&keywords=%s&mode=filename&suite=sid&arch=any
@@ -71,7 +71,7 @@ p = DebianBugPackage
 
 [DebianBugNumber]
 type = import
-import = .web.FetcherWebSearch
+import = .web.FetcherWeb
 
 [DebianBugNumber.args]
 url = https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=%s
@@ -80,7 +80,7 @@ icon = emblem-debian
 
 [DebianBugPackage]
 type = import
-import = .web.FetcherWebSearch
+import = .web.FetcherWeb
 
 [DebianBugPackage.args]
 url = https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=sid;package=%s

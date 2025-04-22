@@ -26,7 +26,7 @@ from . import firefox
 from .. import items
 
 
-class FetcherWebSearch(base.FetcherLeaf):
+class FetcherWeb(base.FetcherLeaf):
     def __init__(self, url, name, icon=None, favicon=None, favicon_source=firefox.FirefoxInfo):
         super().__init__(name, icon)
         self.url = url
