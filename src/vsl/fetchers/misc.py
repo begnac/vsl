@@ -117,5 +117,8 @@ class FetcherLaunchApp(base.FetcherLeaf):
     def __init__(self):
         super().__init__(_("Applications"), 'applications-utilities')
         for appinfo in Gio.app_info_get_all():
-            item = items.ItemDesktop(name=appinfo.get_name(), detail=appinfo.get_filename(), title=_("{name} [application]"), icon=appinfo.get_icon())
+            name = appinfo.get_name()
+            filename = Gio.DesktopAppInfo.get_filename(appinfo)  # GI bug
+            icon = appinfo.get_icon()
+            item = items.ItemDesktop(name=name, detail=filename, title=_("{name} [application]"), icon=icon)
             self.append_item(item)
