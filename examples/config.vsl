@@ -5,6 +5,7 @@ type = mux
 # cb = ChromiumBookmarks
 fb = FirefoxBookmarks
 gg = Google
+gm = GoogleMaps
 d = Debian
 u = Url
 vsl = Actions
@@ -27,6 +28,15 @@ import = .web.FetcherWeb
 url = https://www.google.com/search?q=%s
 name = Google search
 favicon = https://www.google.com/favicon.ico
+
+[GoogleMaps]
+type = import
+import = .web.FetcherWeb
+
+[GoogleMaps.args]
+url = https://www.google.com/maps/search/%s
+name = Google maps search
+icon = location-services-active
 
 [Debian]
 type = mux
