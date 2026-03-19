@@ -24,7 +24,6 @@ from gi.repository import Gdk
 from gi.repository import Gtk
 
 import re
-import weakref
 
 from . import logger
 from . import items
@@ -32,13 +31,18 @@ from . import __program_name__, __version__
 
 
 class HeaderBar(Gtk.HeaderBar):
-    def __init__(self):
-        self.title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+    def __init__(self, main_menu):
         self.title = Gtk.Label(css_classes=['title'], label=__program_name__)
         self.subtitle = Gtk.Label(css_classes=['subtitle'], label=__version__)
+
+        self.title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
         self.title_box.append(self.title)
         self.title_box.append(self.subtitle)
+
         super().__init__(title_widget=self.title_box)
+
+        self.menu_button = Gtk.MenuButton(menu_model=main_menu, primary=True, icon_name='open-menu-symbolic')
+        self.pack_end(self.menu_button)
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
@@ -167,26 +171,28 @@ class CssProvider(Gtk.CssProvider):
 
 class Window(Gtk.ApplicationWindow):
     def __init__(self, app, fetcher):
-        self.headerbar = HeaderBar()
+        self.headerbar = HeaderBar(Gio.Menu())
         self.request_box = RequestBox(fetcher.reply)
-        self.request_box.selection.connect('items-changed', self.items_changed_cb, weakref.ref(self))
+        self.request_box.selection.connect('items-changed', self.items_changed_cb)
 
         app.bind_property('request', self.request_box.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
         self.focus_request()
 
         super().__init__(titlebar=self.headerbar, child=self.request_box, application=app)
 
-        self.connect('close-request', lambda self_: self_.destroy() or True)
+        # self.connect('close-request', lambda self_: self_.destroy() or True)
+        self.connect('destroy', self.__class__.destroy_cb)
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    @staticmethod
-    def items_changed_cb(model, position, removed, added, self):
-        self = self()
+    def items_changed_cb(self, model, position, removed, added):
         self.set_default_size(0, 0)
         if len(model) > 0:
             self.request_box.view.scroll_to(0, Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT, None)
 
     def focus_request(self):
         self.request_box.entry.grab_focus()
+
+    def destroy_cb(self):
+        del self.request_box
