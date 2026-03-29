@@ -18,9 +18,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from gi.repository import Gio
-from gi.repository import Gtk
-
 from .. import items
 from .. import logger
 
@@ -41,52 +38,83 @@ def score(old):
     return old
 
 
+def nonempty(old):
+    old = chain(FetcherNonEmpty)(old)
+    return old
+
+
 class FetcherBase:
-    def __init__(self, reply):
-        self.reply = reply
+    def __init__(self):
+        self.hooks = []
+        self.freeze_count = 0
+        self.changed_while_frozen = False
 
     def __del__(self):
-        logger.debug(f'Deleting {self}')
+        logger.debug(f'Deleting fetcher {self}')
+
+    def freeze(self):
+        self.freeze_count += 1
+
+    def thaw(self):
+        if self.freeze_count == 0:
+            raise RuntimeError
+        self.freeze_count -= 1
+        if self.freeze_count == 0 and self.changed_while_frozen:
+            self.changed_while_frozen = False
+            self._changed()
+
+    def cleanup(self):
+        pass
+
+    def changed(self):
+        if self.freeze_count == 0:
+            self._changed()
+        else:
+            self.changed_while_frozen = True
+
+    def _changed(self):
+        for hook in self.hooks:
+            hook()
+
+    def __iter_(self):
+        raise NotImplementedError
 
     def do_request(self, request):
         raise NotImplementedError
 
 
 class FetcherSource(FetcherBase):
-    def __init__(self, name, icon, reply):
-        super().__init__(reply=reply)
+    def __init__(self, name, icon):
+        super().__init__()
         self.name = name
         self.icon = icon
 
 
 class FetcherLeaf(FetcherSource):
     def __init__(self, name=None, icon=None):
-        super().__init__(name, icon, Gio.ListStore(item_type=items.ScoredItem))
+        super().__init__(name, icon)
+        self.data = []
 
     def do_request(self, request):
         pass
 
     def append_item(self, item, score=0.0):
-        self.reply.append(items.ScoredItem(item, score))
+        self.data.append((item, score))
+        self.changed()
 
-
-class FetcherMux(FetcherSource):
-    def __init__(self, fetchers, name=None, icon=None):
-        self.fetchers = list(fetchers)
-        replies = Gio.ListStore(item_type=Gio.ListModel)
-        for fetcher in self.fetchers:
-            replies.append(fetcher.reply)
-        super().__init__(name, icon, Gtk.FlattenListModel(model=replies))
-
-    def do_request(self, request):
-        for fetcher in self.fetchers:
-            fetcher.do_request(request)
+    def __iter__(self):
+        yield from self.data
 
 
 class FetcherPipe(FetcherBase):
-    def __init__(self, fetcher, reply):
+    def __init__(self, fetcher):
         self.fetcher = fetcher
-        super().__init__(reply)
+        super().__init__()
+        fetcher.hooks.append(self.changed)
+
+    def cleanup(self):
+        self.fetcher.hooks.remove(self.changed)
+        self.fetcher.cleanup()
 
     @property
     def name(self):
@@ -102,105 +130,145 @@ class FetcherPipe(FetcherBase):
 
 class FetcherTop(FetcherPipe):
     def __init__(self, fetcher, size=10):
-        sorter = Gtk.CustomSorter.new(lambda item1, item2, none: Gtk.Ordering.SMALLER if item1.score > item2.score else Gtk.Ordering.LARGER if item1.score < item2.score else Gtk.Ordering.EQUAL)
-        reply = Gtk.SliceListModel(model=Gtk.SortListModel(model=fetcher.reply, sorter=sorter), size=size)
-        super().__init__(fetcher, reply)
+        self.size = size
+        self.top = []
+        super().__init__(fetcher)
+
+    def changed(self):
+        self.top = sorted(self.fetcher, key=lambda item: item[1], reverse=True)
+        if len(self.top) > self.size:
+            self.top = self.top[:self.size]
+        super().changed()
+
+    def __iter__(self):
+        yield from self.top
 
 
 class FetcherMinScore(FetcherPipe):
     def __init__(self, fetcher, *, score=0.2):
-        filter_ = Gtk.CustomFilter.new(lambda item, score_: item.score >= score_, score)
-        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter_))
+        self.score = score
+        super().__init__(fetcher)
+
+    def __iter__(self):
+        return filter(lambda item: item[1] >= self.score, self.fetcher)
 
 
 class FetcherNonEmpty(FetcherPipe):
     def __init__(self, fetcher):
         self.nonempty = False
-        filter_ = Gtk.CustomFilter.new(lambda item: False)
-        super().__init__(fetcher, Gtk.FilterListModel(model=fetcher.reply, filter=filter_))
+        super().__init__(fetcher)
 
     def do_request(self, request):
         if request:
-            self.nonempty = True
+            self.freeze()
+            if not self.nonempty:
+                self.nonempty = True
+                self.changed()
             self.fetcher.do_request(request)
-            self.reply.set_filter(Gtk.CustomFilter.new(lambda item: True))
-        elif self.nonempty:
-            self.nonempty = False
-            self.reply.set_filter(Gtk.CustomFilter.new(lambda item: False))
+            self.thaw()
+        else:
+            if self.nonempty:
+                self.nonempty = False
+                self.changed()
 
-
-class FetcherScoreDelta(FetcherPipe):
-    def __init__(self, fetcher):
-        super().__init__(fetcher, Gtk.MapListModel(model=fetcher.reply))
-
-    def set_score_delta(self, delta):
-        self.reply.set_map_func(lambda i: i.apply_delta(delta))
+    def __iter__(self):
+        if self.nonempty:
+            yield from self.fetcher
 
 
 class FetcherScoreDecay(FetcherPipe):
     def __init__(self, fetcher, *, factor):
-        super().__init__(fetcher, Gio.ListStore(item_type=items.ScoredItem))
-        self.fetcher.reply.connect('items-changed', self.fetcher_items_changed_cb, self.reply, factor)
+        self.factor = factor
+        super().__init__(fetcher)
 
-    @staticmethod
-    def fetcher_items_changed_cb(source, p, r, a, target, factor):
-        target[p:p + r] = [items.ScoredItem(source[i].item, source[i].score * factor ** i) for i in range(p, p + a)]
-        for item in target[p + a:]:
-            item.score *= factor ** (a - r)
+    def __iter__(self):
+        f = 1.0
+        for item, score in self.fetcher:
+            yield item, score * f
+            f *= self.factor
 
 
 class FetcherScoreItems(FetcherPipe):
     def __init__(self, fetcher):
-        super().__init__(fetcher, Gtk.MapListModel(model=fetcher.reply))
+        self.request = ''
+        super().__init__(fetcher)
 
     def do_request(self, request):
-        self.reply.set_map_func(None)
+        self.freeze()
         super().do_request(request)
-        self.reply.set_map_func(lambda i, r: i.apply_request(r), request)
+        self.request = request
+        self.changed()
+        self.thaw()
+
+    def __iter__(self):
+        for item, score in self.fetcher:
+            yield item, score + item.score(self.request)
 
 
 class FetcherPrefix(FetcherPipe):
     PREFIX_NONE = 0
-    PREFIX_BAD = 1
-    PREFIX_EXACT = 2
-    PREFIX_OK = 3
+    PREFIX_PREFIX = 1
+    PREFIX_OK = 2
+    PREFIX_BAD = 3
 
     def __init__(self, fetcher, prefix):
         self.prefix = prefix
-
-        replies = Gio.ListStore(item_type=Gio.ListModel)
-        super().__init__(fetcher, Gtk.FlattenListModel(model=replies))
-
-        self.score_fetcher = FetcherScoreDelta(fetcher)
-        self.nonempty_fetcher = FetcherNonEmpty(self.score_fetcher)
-        self.prefix_fetcher = FetcherLeaf()
-
-        replies.append(self.nonempty_fetcher.reply)
-        replies.append(self.prefix_fetcher.reply)
-
         self.prefix_status = self.PREFIX_NONE
+        self.score_delta = 0.0
+        super().__init__(fetcher)
 
     def do_request(self, request):
+        self.freeze()
         if not request.startswith('.'):
             if self.prefix_status != self.PREFIX_NONE:
                 self.prefix_status = self.PREFIX_NONE
-                self.prefix_fetcher.reply.remove_all()
-                self.score_fetcher.set_score_delta(0.0)
-            self.nonempty_fetcher.do_request(request)
-        elif request[1:] in (self.prefix, ''):
-            if self.prefix_status != self.PREFIX_EXACT:
-                self.prefix_status = self.PREFIX_EXACT
-                item = items.ItemChangeRequest(name=self.name, detail=f"Prefix is « {self.prefix} »", icon=self.icon, pattern='\\.$', repl='.' + self.prefix)
-                self.prefix_fetcher.append_item(item, score=1.0)
-                self.nonempty_fetcher.do_request('')
-        elif not request[1:].startswith(self.prefix):
-            if self.prefix_status != self.PREFIX_BAD:
-                self.prefix_status = self.PREFIX_BAD
-                self.prefix_fetcher.reply.remove_all()
-                self.nonempty_fetcher.do_request('')
-        else:
+                self.score_delta = 0.0
+                self.changed()
+            self.fetcher.do_request(request)
+        elif self.prefix.startswith(request[1:]):
+            self.prefix_status = self.PREFIX_PREFIX
+            self.item_prefix = items.ItemChangeRequest(name=self.fetcher.name, detail=f"Prefix is « {self.prefix} »", icon=self.fetcher.icon, pattern=f'\\{request}$', repl='.' + self.prefix)
+            self.changed()
+        elif request[1:].startswith(self.prefix):
             if self.prefix_status != self.PREFIX_OK:
                 self.prefix_status = self.PREFIX_OK
-                self.prefix_fetcher.reply.remove_all()
-                self.score_fetcher.set_score_delta(1.0)
-            self.nonempty_fetcher.do_request(request[len(self.prefix) + 1:])
+                self.changed()
+            self.fetcher.do_request(request[len(self.prefix) + 1:])
+        else:
+            if self.prefix_status != self.PREFIX_BAD:
+                self.prefix_status = self.PREFIX_BAD
+                self.changed()
+        self.thaw()
+
+    def __iter__(self):
+        if self.prefix_status == self.PREFIX_NONE:
+            yield from self.fetcher
+        elif self.prefix_status == self.PREFIX_PREFIX:
+            yield self.item_prefix, 1.0
+        elif self.prefix_status == self.PREFIX_OK:
+            for item, score in self.fetcher:
+                yield item, score + 1.0
+
+
+@nonempty
+class FetcherMux(FetcherSource):
+    def __init__(self, fetchers, name=None, icon=None):
+        super().__init__(name, icon)
+        self.fetchers = list(fetchers)
+        for fetcher in self.fetchers:
+            fetcher.hooks.append(self.changed)
+
+    def cleanup(self):
+        for fetcher in self.fetchers:
+            fetcher.hooks.remove(self.changed)
+            fetcher.cleanup()
+
+    def __iter__(self):
+        for fetcher in self.fetchers:
+            yield from fetcher
+
+    def do_request(self, request):
+        self.freeze()
+        for fetcher in self.fetchers:
+            fetcher.do_request(request)
+        self.thaw()

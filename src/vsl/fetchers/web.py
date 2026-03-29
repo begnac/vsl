@@ -38,7 +38,7 @@ class FetcherWeb(base.FetcherLeaf):
         self.icon = await favicon_source.get_favicon(favicon)
 
     def do_request(self, request):
-        self.reply.remove_all()
+        self.data.clear()
         self.append_item(items.ItemUri(name=self.name, detail=self.url.replace('%s', request), icon=self.icon), score=0.7)
 
 
@@ -47,7 +47,7 @@ class FetcherWebUrl(base.FetcherLeaf):
         super().__init__(_("Open URL in browser"), 'web-browser')
 
     def do_request(self, request):
-        self.reply.remove_all()
+        self.data.clear()
         url = urllib.parse.urlsplit(request)
         if url.scheme in ('http', 'https'):
             score = 1.0

@@ -34,6 +34,12 @@ class FetcherActions(base.FetcherLeaf):
         super().__init__(_("VSL actions"), icon='face-devilish')
         self.append_item(items.ItemAction(name=_("Quit"), detail='quit', icon='application-exit'))
         self.append_item(items.ItemAction(name=_("Close window"), detail='close', icon='window-close'))
+        self.first = True
+
+    def do_request(self, request):
+        if self.first:
+            self.changed()
+            self.first = False
 
 
 @base.score
@@ -52,7 +58,7 @@ class FetcherLocate(base.FetcherLeaf):
     def do_request(self, request):
         if self.last_async_request is not None and request.startswith(self.last_async_request):
             return
-        self.reply.remove_all()
+        self.data.clear()
         self.last_async_request = None
         if len(request) < self.min_length:
             self.append_item(items.ItemNoop(name=_("Type at least {min_length} characters to locate files").format(min_length=self.min_length), detail='', icon=self.icon), 0.2)

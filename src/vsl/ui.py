@@ -48,6 +48,28 @@ class HeaderBar(Gtk.HeaderBar):
         logger.debug(f'Deleting {self}')
 
 
+class ItemBox(Gtk.Box):
+    def __init__(self):
+        super().__init__(css_name='item-box')
+
+        self.icon = Gtk.Image(icon_size=Gtk.IconSize.LARGE)
+        self.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-title'])
+        self.detail = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-detail'])
+        self.score = Gtk.Label(halign=Gtk.Align.END, css_classes=['item-detail'])
+
+        self.append(self.icon)
+        box2 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+        self.append(box2)
+
+        box2.append(self.title)
+        box3 = Gtk.Box()
+        box2.append(box3)
+
+        box3.append(self.detail)
+        box3.append(Gtk.Label(label=" ", hexpand=True))
+        box3.append(self.score)
+
+
 class Factory(Gtk.SignalListItemFactory):
     def __init__(self):
         super().__init__()
@@ -59,23 +81,7 @@ class Factory(Gtk.SignalListItemFactory):
 
     @staticmethod
     def setup_cb(self, listitem):
-        box = Gtk.Box(css_name='item-box')
-        box.icon = Gtk.Image(icon_size=Gtk.IconSize.LARGE)
-        box.title = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-title'])
-        box.detail = Gtk.Label(halign=Gtk.Align.START, css_classes=['item-detail'])
-        box.score = Gtk.Label(halign=Gtk.Align.END, css_classes=['item-detail'])
-        box2 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
-        box3 = Gtk.Box()
-
-        box.append(box.icon)
-        box.append(box2)
-        box2.append(box.title)
-        box2.append(box3)
-        box3.append(box.detail)
-        box3.append(Gtk.Label(label=" ", hexpand=True))
-        box3.append(box.score)
-
-        listitem.set_child(box)
+        listitem.set_child(ItemBox())
 
     @staticmethod
     def bind_cb(self, listitem):
@@ -98,22 +104,32 @@ class Factory(Gtk.SignalListItemFactory):
         box.icon.set_from_gicon(icon)
 
     # @staticmethod
-    # def unbind_cb(self, item):
+    # def unbind_cb(self, listitem):
     #     pass
 
     @staticmethod
-    def teardown_cb(self, item):
-        item.set_child(None)
+    def teardown_cb(self, listitem):
+        listitem.set_child(None)
+
+
+class ScoredItem(GObject.Object):
+    def __init__(self, item, score):
+        super().__init__()
+        self.item = item
+        self.score = score
 
 
 class RequestBox(Gtk.Box):
-    def __init__(self, model):
+    def __init__(self, fetcher):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
+        self.fetcher = fetcher
+        self.fetcher.hooks.append(self.fetcher_changed)
         self.entry = Gtk.Entry(css_classes=['request'])
         self.append(self.entry)
 
-        self.selection = Gtk.SingleSelection(model=model)
+        self.store = Gio.ListStore(item_type=ScoredItem)
+        self.selection = Gtk.SingleSelection(model=self.store)
         self.view = Gtk.ListView(model=self.selection, factory=Factory(), tab_behavior=Gtk.ListTabBehavior.CELL)
         self.append(self.view)
 
@@ -122,6 +138,12 @@ class RequestBox(Gtk.Box):
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
+
+    def cleanup(self):
+        del self.fetcher
+
+    def fetcher_changed(self):
+        self.store[:] = [ScoredItem(item, score) for item, score in self.fetcher]
 
     @staticmethod
     def activate_item(item, entry):
@@ -133,7 +155,7 @@ class RequestBox(Gtk.Box):
             entry.get_first_child().emit('move-cursor', Gtk.MovementStep.BUFFER_ENDS, 1, False)
         else:
             item.activate()
-            Gio.Application.get_default().close_window()
+            entry.get_root().set_visible(False)
 
     @staticmethod
     def activate_entry_cb(entry, model):
@@ -172,16 +194,14 @@ class CssProvider(Gtk.CssProvider):
 class Window(Gtk.ApplicationWindow):
     def __init__(self, app, fetcher):
         self.headerbar = HeaderBar(Gio.Menu())
-        self.request_box = RequestBox(fetcher.reply)
+        self.request_box = RequestBox(fetcher)
         self.request_box.selection.connect('items-changed', self.items_changed_cb)
 
         app.bind_property('request', self.request_box.entry.get_buffer(), 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
-        self.focus_request()
 
-        super().__init__(titlebar=self.headerbar, child=self.request_box, application=app)
+        super().__init__(titlebar=self.headerbar, child=self.request_box, application=app, hide_on_close=True)
 
-        # self.connect('close-request', lambda self_: self_.destroy() or True)
-        self.connect('destroy', self.__class__.destroy_cb)
+        self.connect('show', self.__class__.focus_request)
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
@@ -194,5 +214,7 @@ class Window(Gtk.ApplicationWindow):
     def focus_request(self):
         self.request_box.entry.grab_focus()
 
-    def destroy_cb(self):
+    def destroy(self):
+        self.request_box.cleanup()
         del self.request_box
+        super().destroy()

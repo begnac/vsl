@@ -19,7 +19,6 @@
 
 
 from gi.repository import GLib
-from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import Gtk
 
@@ -28,22 +27,6 @@ import difflib
 import subprocess
 
 from . import logger
-
-
-class ScoredItem(GObject.Object):
-    def __init__(self, item, score=0.0):
-        super().__init__()
-        self.item = item
-        self.score = score
-
-    def apply_delta(self, delta):
-        return ScoredItem(self.item, self.score + delta)
-
-    def apply_request(self, request):
-        return self.apply_delta(self.item.score(request))
-
-    def __repr__(self):
-        return f'{self.item} ({self.score})'
 
 
 class ItemBase:

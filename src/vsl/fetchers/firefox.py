@@ -73,6 +73,7 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
         asyncio.ensure_future(self.setup())
 
     async def setup(self):
+        self.freeze()
         db1 = await _FirefoxInfo.db_in_profile('places')
         db2 = await _FirefoxInfo.db_in_profile('favicons')
         bookmarks = await db1.execute('SELECT bookmarks.title, places.url '
@@ -94,3 +95,4 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
             self.append_item(items.ItemUri(name=title, detail=url, title=_("{name} [Firefox]"), icon=icon), score=0.1)
         await db2.close()
         await db1.close()
+        self.thaw()

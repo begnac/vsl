@@ -93,18 +93,19 @@ class App(Gtk.Application):
             config.read_file(open(config_file), source=config_file)
         self.root_fetcher = fetchers.fetcher_from_config(config)
 
+        self.root_fetcher.do_request(self.request)
         self.connect('notify::request', lambda self_, param: self_.root_fetcher.do_request(self_.request))
-
-        self.hold()
+        self.window = ui.Window(self, self.root_fetcher)
 
     @staticmethod
     def shutdown_cb(self):
         logger.debug("Shutting down")
 
-        self.close_window()
+        self.root_fetcher.cleanup()
+        # self.window.destroy()
+        # del self.window
         for action in self.actions:
             action.remove_from_app(self)
-        self.release()
         gasyncio.stop_slave_loop()
         GLib.source_remove(self.sigint_source)
 
@@ -139,16 +140,16 @@ class App(Gtk.Application):
 
     @staticmethod
     def activate_cb(self):
-        win = self.get_active_window() or ui.Window(self, self.root_fetcher)
-        win.present()
+        self.window.present()
 
     def set_request(self, request):
         self.request = request
-        win = self.get_active_window()
-        if win:
-            win.focus_request()
+        self.window.focus_request()
 
     def close_window(self):
-        win = self.get_active_window()
-        if win:
-            win.destroy()
+        self.window.set_visible(False)
+
+    def quit(self):
+        self.window.destroy()
+        del self.window
+        super().quit()
