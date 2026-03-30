@@ -206,6 +206,12 @@ class Window(Gtk.ApplicationWindow):
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
+    def close(self):
+        self.set_hide_on_close(False)
+        self.request_box.cleanup()
+        self.request_box.selection.disconnect_by_func(self.items_changed_cb)
+        super().close()
+
     def items_changed_cb(self, model, position, removed, added):
         self.set_default_size(0, 0)
         if len(model) > 0:
@@ -213,8 +219,3 @@ class Window(Gtk.ApplicationWindow):
 
     def focus_request(self):
         self.request_box.entry.grab_focus()
-
-    def destroy(self):
-        self.request_box.cleanup()
-        del self.request_box
-        super().destroy()

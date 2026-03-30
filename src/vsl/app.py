@@ -64,24 +64,23 @@ class App(Gtk.Application):
         self.add_main_option('request', ord('r'), GLib.OptionFlags.NONE, GLib.OptionArg.STRING, _("Request text"), None)
         self.add_main_option('clipboard', ord('c'), GLib.OptionFlags.NONE, GLib.OptionArg.NONE, _("Request from clipboard"), None)
 
-        self.connect('startup', self.startup_cb)
-        self.connect('shutdown', self.shutdown_cb)
-        self.connect('handle-local-options', self.handle_local_options_cb)
-        self.connect('command-line', self.command_line_cb)
-        self.connect('activate', self.activate_cb)
+        self.connect('startup', self.__class__.startup_cb)
+        self.connect('shutdown', self.__class__.shutdown_cb)
+        self.connect('handle-local-options', self.__class__.handle_local_options_cb)
+        self.connect('command-line', self.__class__.command_line_cb)
+        self.connect('activate', self.__class__.activate_cb)
 
     def __del__(self):
         logger.debug(f'Deleting {self}')
 
-    @staticmethod
     def startup_cb(self):
         ui.CssProvider().add_myself()
 
-        self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: self.quit() or True)
+        self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: self.stop() or True)
         gasyncio.start_slave_loop()
 
         self.actions = (
-            Action(name='quit', accels=['<Control>q'], activate_cb=lambda app: app.quit()),
+            Action(name='quit', accels=['<Control>q'], activate_cb=lambda app: app.stop()),
             Action(name='close', accels=['Escape'], activate_cb=lambda app: app.close_window())
         )
         for action in self.actions:
@@ -97,19 +96,15 @@ class App(Gtk.Application):
         self.connect('notify::request', lambda self_, param: self_.root_fetcher.do_request(self_.request))
         self.window = ui.Window(self, self.root_fetcher)
 
-    @staticmethod
     def shutdown_cb(self):
         logger.debug("Shutting down")
 
         self.root_fetcher.cleanup()
-        # self.window.destroy()
-        # del self.window
         for action in self.actions:
             action.remove_from_app(self)
         gasyncio.stop_slave_loop()
         GLib.source_remove(self.sigint_source)
 
-    @staticmethod
     def handle_local_options_cb(self, options):
         if options.contains('version'):
             print(_("{program} version {version}").format(program=__program_name__, version=__version__))
@@ -118,7 +113,6 @@ class App(Gtk.Application):
             return 0
         return -1
 
-    @staticmethod
     def command_line_cb(self, command_line):
         options = command_line.get_options_dict().end().unpack()
 
@@ -138,7 +132,6 @@ class App(Gtk.Application):
         except GLib.GError:
             pass
 
-    @staticmethod
     def activate_cb(self):
         self.window.present()
 
@@ -149,7 +142,5 @@ class App(Gtk.Application):
     def close_window(self):
         self.window.set_visible(False)
 
-    def quit(self):
-        self.window.destroy()
-        del self.window
-        super().quit()
+    def stop(self):
+        self.window.close()
