@@ -81,6 +81,8 @@ class FetcherFirefoxBookmarks(base.FetcherLeaf):
                                       # 'JOIN moz_bookmarks parents ON bookmarks.parent = parents.id AND parents.parent <> 4 '
                                       'JOIN moz_places places ON bookmarks.fk = places.id')
         async for title, url in bookmarks:
+            if title is None:
+                title = "THIS SHOULD NOT HAPPEN"
             icons = await db2.execute('SELECT moz_icons.data '
                                       'FROM moz_pages_w_icons '
                                       'JOIN moz_icons_to_pages ON moz_pages_w_icons.id = moz_icons_to_pages.page_id '
