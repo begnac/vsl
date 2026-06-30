@@ -53,7 +53,7 @@ class Action(Gio.SimpleAction):
         self.disconnect_by_func(self.activate_cb)
 
 
-class App(Gtk.Application):
+class App(gasyncio.GAsyncIOApplicationMixin, Gtk.Application):
     request = GObject.Property(type=str, default='')
 
     def __init__(self):
@@ -77,7 +77,6 @@ class App(Gtk.Application):
         ui.CssProvider().add_myself()
 
         self.sigint_source = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda: self.stop() or True)
-        gasyncio.start_slave_loop()
 
         self.actions = (
             Action(name='quit', accels=['<Control>q'], activate_cb=lambda app: app.stop()),
@@ -102,7 +101,6 @@ class App(Gtk.Application):
         self.root_fetcher.cleanup()
         for action in self.actions:
             action.remove_from_app(self)
-        gasyncio.stop_slave_loop()
         GLib.source_remove(self.sigint_source)
 
     def handle_local_options_cb(self, options):

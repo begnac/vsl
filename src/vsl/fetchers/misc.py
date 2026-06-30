@@ -74,7 +74,7 @@ class FetcherLocate(base.FetcherLeaf):
         process = None
         try:
             self.freeze()
-            process = await asyncio.create_subprocess_exec('plocate', '-iN', request, stdout=asyncio.subprocess.PIPE)
+            process = await asyncio.create_subprocess_exec('locate', '-iN', '--', request, stdout=asyncio.subprocess.PIPE)
             if task != self.task:
                 return
 
